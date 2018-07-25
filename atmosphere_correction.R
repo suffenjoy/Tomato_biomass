@@ -1,5 +1,5 @@
 T_obj <- function(DN, emissivity, T_refl, T_atm, humid, dist){
-  #T_refl and T_atm are in K unit
+  #T_refl and T_atm are in degrees of celsius
   #dist is in meter unit 
   
   library(pracma)
