@@ -144,7 +144,7 @@ shapefile(row_south_polys_df, file.path(path_shapefiles, "south_rows_all.shp"), 
 
 
 
-#--------------------------------------------------------------------#
+#----------------------------------------extract ndvi----------------------------#
 #Mask out soil pixels 
 hist(tomato_ndvi_061618)
 #Only select pixels that NDVI>0.4
@@ -170,3 +170,6 @@ block_ndvi_061618 <- as.data.frame(summarise(by_block, mean_NDVI = mean(NDVI)))
 block_ndvi_061618 <- subset(block_ndvi_061618, block_ndvi_061618$block!="buffer")
 #order depend on NDVI value
 block_ndvi_061618[order(block_ndvi_061618$mean_NDVI),]
+
+
+#--------------------------extract temperature data-------------------------#
