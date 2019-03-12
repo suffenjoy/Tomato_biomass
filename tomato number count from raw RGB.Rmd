@@ -1,0 +1,203 @@
+---
+title: "tomato number count from raw RGB (undistorted)"
+author: "Zhehan"
+date: "February 27, 2019"
+output: html_document
+---
+
+#package
+```{r}
+library(rgdal)
+library(raster)
+library(alphahull)
+library(ggplot2)
+library(jpeg)
+library(imager)
+```
+
+#read Parameter data
+```{r}
+#path
+path_params <- "C:/Users/zt92/Box Sync/Tomato biomass/tomato_number_count/Params"
+
+#P-Matrix file 
+pmatrix <- read.delim(file.path(path_params, "tomato_091818_rgb_new_pmatrix.txt"), sep = " ", header = FALSE)
+pmatrix$V14 <- NULL
+pmatrix$V1 <- NULL  #remain 12 columns 
+#store in a list, each sublist contains a 3*4 matrix
+pmatrix <- as.matrix(pmatrix)
+pmatrix_ls <- list()
+for (i in 1:dim(pmatrix)[1]){
+  pmatrix_ls[[i]] <- matrix(pmatrix[i,],3,4, byrow = TRUE)
+}
+
+#Point cloud 
+pointcloud <- read.table(file.path(path_params, "tomato_091818_rgb_new_group1_densified_point_cloud.xyz"), sep = " ", header = FALSE)
+
+
+
+```
+
+#read shapefile of rows and assign the block ID to each point 
+```{r}
+path_shp <- "C:/Users/zt92/Box Sync/Tomato biomass/tomato_number_count/Shapefiles"
+rowslong <- raster::shapefile(file.path(path_shp, "rowslong_091818_rgb.shp"))
+
+#retrieve coordinates of the boundary of each row
+coords_ls <- list()
+for(i in 1:length(rowslong)){
+  coords_ls[[i]] <- rowslong[i,]@polygons[[1]]@Polygons[[1]]@coords
+}
+
+#give each point in the point cloud a new column of id
+pointcloud$ID <- 0 
+pointcloud$check <- 0 
+for(i in 1:length(coords_ls)){
+  temp <- point.in.polygon(point.x = pointcloud$V1, point.y = pointcloud$V2, pol.x = coords_ls[[i]][,1], pol.y = coords_ls[[i]][,2])
+  pointcloud$ID <- pointcloud$ID + as.numeric(temp!=0)*i
+  pointcloud$check <- pointcloud$check + as.numeric(temp!=0)
+}
+
+length(pointcloud$check)
+sum(pointcloud$check==1)
+sum(pointcloud$check==1)+sum(pointcloud$check==0)
+sum(pointcloud$check==2)
+pointcloud$check = NULL    #remove the check column
+
+
+```
+
+#reverse calculation 
+```{r}
+##the first three columns are coordinates 
+pc_XYZ <- as.matrix(pointcloud[,1:3])
+pc_XYZ <- cbind(pc_XYZ, 1)
+
+
+#offset (there is an offset that needs to be subtracted)
+offset <- read.table(file.path(path_params, "tomato_091818_rgb_new_offset.xyz"), sep = " ", header = FALSE)
+offset <- as.matrix(offset)
+
+#subtract the offset
+pc_XYZ[,1:3] <- sweep(pc_XYZ[,1:3],2, offset) 
+
+#store in a list 
+xyz_list <- list()
+for(i in 1:length(pmatrix_ls)){
+  xyzt <- pmatrix_ls[[i]]%*%t(pc_XYZ)
+  xyz <- t(xyzt)
+  #u = x/z
+  u <- xyz[,1]/xyz[,3]
+  #v = y/z
+  v <- xyz[,2]/xyz[,3]
+  xyz_list[[i]] <- cbind(u,v)
+}
+
+
+
+```
+
+#read the undistorted image
+```{r}
+path_img <- "C:/Users/zt92/Box Sync/Tomato biomass/tomato_number_count/rgb_undistorted"
+img_ls <- list()
+img_files <- list.files(path_img, full.names = TRUE)
+#read all undistorted images in the directory
+img_ls <- lapply(img_files, FUN = function(x){imager::load.image(x)})
+
+
+for(i in 1:length(img_files)){
+  img_ls[[i]] <- imager::load.image(img_files[[i]])
+  print(i)
+}  #RAM is not enough for this step 
+
+
+
+#plot one of them 
+plot(img_ls[[20]])
+width(img_ls[[20]])
+height(img_ls[[20]])
+spectrum(img_ls[[20]])
+##add point of the 
+points(b2[,1], b2[,2])
+
+
+#check for the first image
+dim(xyz_list[[1]])
+dim(pointcloud)
+a <- xyz_list[[1]][pointcloud$ID==1,]
+b <- a[a[,1]<4000 & a[,2]<3000, ]
+a2 <- xyz_list[[1]][pointcloud$ID==2,]
+b2 <- a2[a2[,1]<4000 & a2[,2]<3000, ]
+head(a)
+tail(a)
+
+#imgjpeg <- readJPEG(file.path(path_img, "DJI_0001.jpg"))
+#plot(seq(0,4000,length.out = 4000), seq(-3000,0, length.out = 4000), type = "n", main = "", xlab = "", ylab = "")
+#lim <- par()
+#rasterImage(imgjpeg, lim$usr[1], lim$usr[3], lim$usr[2], lim$usr[4])
+#points(b[,1], b[,2], col = "white")
+#points(b2[,1], b2[,2], col = "black")
+
+#img <- raster(file.path(path_img, "DJI_0001.jpg"))
+#rasterImage(img, 100, 300, 150, 350)
+
+```
+
+
+#use alphahull package to fit the boundary 
+```{r}
+img1_plot1_pc <- xyz_list[[1]][pointcloud$ID == 1,]
+img1_plot1_pc <- img1_plot1_pc[img1_plot1_pc[,1]<4000 & img1_plot1_pc[,2]<3000,]
+img1_plot1_pc <- unique(img1_plot1_pc) 
+head(img1_plot1_pc)
+tail(img1_plot1_pc)
+img1_plot1_bnd <- alphahull::ahull(x = img1_plot1_pc[,1], y = img1_plot1_pc[,2], alpha = 1000) #the alpha value need to be adjusted
+plot(img1_plot1_bnd)
+plot(img1_plot1_bnd, wpoints = FALSE)
+
+#try chull function, it's better and easier to use!!!   
+chull_1_1 <- chull(x = img1_plot1_pc[,1], y = img1_plot1_pc[,2]) 
+plot(img1_plot1_pc)
+a <- img1_plot1_pc[c(chull_1_1,chull_1_1[1]),]
+lines(a, col = "red")
+
+#it's not the same 
+a2 <- a
+a2[,2] <- 3000-a[,2]
+sp_a2 <- SpatialPolygons(list(Polygons(list(Polygon(a2)), ID = 1)))
+sp_a2_df <- SpatialPolygonsDataFrame(sp_a2, data = data.frame(ID = 1, IMG = 1))
+
+
+sp_a <- SpatialPolygons(list(Polygons(list(Polygon(a)), ID = 1)))
+sp_a_df <- SpatialPolygonsDataFrame(sp_a, data = data.frame(ID = 1, IMG = 1))
+
+
+
+img1_raster <- raster::brick(file.path(path_img, "DJI_0001.jpg"))
+plotRGB(img1_raster)
+plot(sp_a_df, add = TRUE)
+plot(sp_a2_df, add = TRUE)
+```
+
+#draw the plot boundary over the undistorted image
+```{r}
+img1 <- load.image(file.path(path_img, "DJI_0001.jpg"))
+plot(img1)
+points(img1_plot1_pc, col = "white")
+plot(img1_plot1_bnd, wpoints = FALSE, add = TRUE)
+
+plot(img1_plot1_bnd$complement[,1], img1_plot1_bnd$xahull[,2])
+plot(img1_plot1_bnd$ashape.obj$edges[,3], img1_plot1_bnd$ashape.obj$edges[,4])
+plot(img1_plot1_bnd$ashape.obj$edges[,5], img1_plot1_bnd$ashape.obj$edges[,6] col = "red")
+
+boundary(img1) %>% plot
+```
+
+#extract the values from that boundary
+```{r}
+#question 1: how to etract values from that boundary
+
+#question 2: how to convert the ahull object to a shapefile that the jpg can understand
+```
+

@@ -1,0 +1,186 @@
+---
+title: "tomato_number_count from RGB Orthomosaic"
+author: "Zhehan"
+date: "February 22, 2019"
+output: html_document
+---
+#package
+```{r}
+library(raster)
+library(ggplot2)
+library(imager)
+library(EBImage)
+library(autothresholdr)
+```
+
+#read shapefile
+```{r}
+path_shp <- "C:/Users/zt92/Box Sync/Tomato biomass/tomato_number_count/Shapefiles"
+#rows 
+rowslong_rgb <- shapefile(file.path(path_shp, "rowslong_091818_rgb.shp"))
+rows_rgb <- shapefile(file.path(path_shp, "rows_091818_rgb.shp"))
+#boundary
+BND_rgb <- shapefile(file.path(path_shp, "BND_091818_rgb.shp"))
+
+#output
+#shapefile(rowslong_rgb, file.path(path_shp, "rowslong_091818_rgb.shp"), overwrite = TRUE)
+```
+
+#read uav image
+```{r}
+path_img <- "C:/Users/zt92/Box Sync/Tomato biomass/tomato_number_count/Processed_images"
+
+#rgb orthomosaic
+rgb_ortho <- brick(file.path(path_img, "tomato_091818_rgb_transparent_reflectance_group1.tif"))
+
+#ExG-ExR
+ExGExR_ortho <- raster(file.path(path_img, "ExGExR_rgb_091818.tif"))
+plot(ExGExR_ortho)
+#NDI
+ndi_ortho <- raster(file.path(path_img, "NDI_rgb_091818.tif"))
+plot(ndi_ortho)
+```
+
+#read training examples 
+```{r}
+tr_sample <- shapefile(file.path(path_shp, "training_091818_rgb.shp"))
+tr_fruit <- tr_sample[tr_sample$Classname=="Fruit",]
+tr_leaf <- tr_sample[tr_sample$Classname=="Leaf",]
+tr_soil <- tr_sample[tr_sample$Classname=="Soil",]
+```
+
+
+#Histogram of distribution 
+```{r}
+#for exg-exr 
+plot(ExGExR_ortho)
+hist(values(ExGExR_ortho))
+
+#extract by the tr_sample
+exgexr_sample <- extract(ExGExR_ortho, tr_sample, method = "simple", buffer = NULL)
+names(exgexr_sample) <- tr_sample$Classname
+ndi_sample <- extract(ndi_ortho, tr_sample, method  = "simple", buffer = NULL)
+names(ndi_sample) <- tr_sample$Classname
+
+#distribution of each 
+par(mfrow = c(3,2))
+hist(exgexr_sample$Fruit, main = "ExG-ExR Fruit", xlab = "")
+
+hist(exgexr_sample$Leaf, main = "ExG-ExR Leaf", xlab = "")
+hist(exgexr_sample$Soil, main = "ExG-ExR Soil", xlab = "")
+
+hist(ndi_sample$Fruit,main = "NDI Fruit", xlab = "")
+hist(ndi_sample$Leaf,main = "NDI Leaf", xlab = "")
+hist(ndi_sample$Soil,main = "NDI Soil", xlab = "")
+
+#distribution of all 
+par(mfrow = c(2,1))
+hist(c(sample(exgexr_sample$Fruit,2000), sample(exgexr_sample$Leaf,2000), sample(exgexr_sample$Soil,2000)), main = "ExG-ExR samples", xlab = "ExG - ExR")
+hist(c(sample(ndi_sample$Fruit,2000), sample(ndi_sample$Leaf,2000), sample(ndi_sample$Soil,2000)), main = "NDI samples", xlab = "NDI")
+
+
+```
+
+##histogram with ggplot 
+```{r}
+library(devtools)
+install_github("easyGgplo2","kassambara")
+library(easyGgplot2)
+
+ggplot2.histogram(data = )
+```
+
+
+#thresholding 
+```{r}
+par(mfrow = c(2,1))
+#with 2000 samples per category
+hist(c(sample(exgexr_sample$Fruit,2000), sample(exgexr_sample$Soil, 2000)), main = "ExG-ExR Soil and Fruit Histogram", xlab = "")
+plot(density(c(sample(exgexr_sample$Fruit,2000), sample(exgexr_sample$Soil, 2000))), main = "ExG-ExR Soil and Fruit Density Plot")
+
+##mask plant leaves first 
+nonleaf <- calc(ExGExR_ortho, function(x){x[x< -60]<-NA; return(NA)})
+ExGExR_ortho_nonleaf <- raster::mask(ExGExR_ortho, mask = nonleaf)
+par(mfrow = c(1,1))
+plot(ExGExR_ortho_nonleaf)
+
+
+#Otsu threshold
+thr_ebi <- EBImage::otsu((ExGExR_ortho), range = c(-255, -60))
+EBImage::display(thr_ebi)
+```
+
+#test for otsu thresholding (not successful)
+```{r}
+img <- readImage(system.file("images","sample.png", package = "EBImage"))
+display(img)
+thr <- img > otsu(img)
+display(thr)
+```
+
+#extract from raster
+```{r}
+#add east west columns
+rowslong_rgb$EW <- rep(c("west","east"),45)
+#subset only the east ones
+rowslong_rgb_east <- rowslong_rgb[rowslong_rgb$EW == "east",]
+
+#extract from exgexr
+exgexr_ext <- raster::extract(ExGExR_ortho, rowslong_rgb_east, method= "simple", buffer = NULL)
+
+#set the threshold of ExG-ExR 
+count_exgexr_rgb <- sapply(exgexr_ext, function(x){sum(x>-120)})
+
+
+```
+
+#read classification result from ArcGIS
+```{r}
+path_class <- "C:/Users/zt92/Box Sync/Tomato biomass/tomato_number_count/classification"
+RTclass_rgb <- raster(file.path(path_class,"tomato_rgb_RTclass.tif"))
+SVMclass_rgb <- raster(file.path(path_class, "tomato_rgb_SVMclass.tif"))
+MLclass_rgb <- raster(file.path(path_class, "tomato_rgb_MLclass.tif"))
+#plot(RTclass_rgb)
+
+#extraction from RTclass
+RTclass_ext <- raster::extract(RTclass_rgb, rowslong_rgb_east, method = "simple", buffer = NULL)
+count_RTclass_rgb <- sapply(RTclass_ext, function(x){sum(x==0)})
+
+SVMclass_ext <- raster::extract(SVMclass_rgb, rowslong_rgb_east, method = "simple", buffer = NULL)
+count_SVMclass_rgb <- sapply(SVMclass_ext, function(x){sum(x==0)})
+
+MLclass_ext <- raster::extract(MLclass_rgb, rowslong_rgb_east, method = "simple", buffer = NULL)
+count_MLclass_rgb <- sapply(MLclass_ext, function(x){sum(x==0)})
+
+```
+
+#create a data frame to store all counting results
+```{r}
+count_rgb <- data.frame("block" = rowslong_rgb_east$block, "id" = rowslong_rgb_east$id)
+count_rgb$exgexr <- count_exgexr_rgb
+count_rgb$RT <- count_RTclass_rgb
+count_rgb$ML <- count_MLclass_rgb
+count_rgb$SVM <- count_SVMclass_rgb
+#the only outlier of exgexr is number 45
+#count_rgb_2 <- count_rgb[1:44,]
+
+#create a panel
+panel.cor <- function(x,y){
+  usr = par("usr"); on.exit(par(usr))
+  par(usr = c(0,1,0,1))
+  r <- round(cor(x,y), digits = 4)
+  txt = paste0("R=",r)
+  cex.cor <- 0.8/strwidth(txt)
+  text(0.5,0.5,txt, cex = cex.cor*r)
+}
+upper.panel <- function(x,y){
+  points(x,y, pch = 19)
+}
+pairs(count_rgb[1:44,3:6], lower.panel = panel.cor, upper.panel = upper.panel)
+
+
+path_result <- "C:/Users/zt92/Box Sync/Tomato biomass/tomato_number_count/results"
+write.csv(count_rgb, file.path(path_result, "count_rgb.csv"))
+cor(count_rgb[1:44,]$exgexr, count_rgb[1:44,]$RT)^2
+```
+
