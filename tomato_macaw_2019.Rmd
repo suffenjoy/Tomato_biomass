@@ -1,0 +1,165 @@
+---
+title: "tomato_macaw_2019"
+author: "Zhehan"
+date: "January 6, 2020"
+output: html_document
+---
+#Packages
+```{r}
+library(raster)
+library(ggplot2)
+library(dplyr)
+```
+
+#Read macaw imgs
+##read macaw function  
+```{r}
+read_macaw <- function(path, stacks){
+  #read raster layer, and crop with the extent
+  uav_stacks <- raster::brick(file.path(path, stacks))
+  #rename the bands
+  names(uav_stacks) <- c("p800","p570","p530")
+  
+  return(uav_stacks)
+}
+```
+
+```{r}
+path_pri <- "C:/Users/zt92/Box Sync/BIOSTIMULANT FIELD SCREENING MASTER FOLDER/DRONE/macaw_pri"
+
+#0822
+macaw_082219 <- read_macaw(path_pri, "tomato_macawrgbpri_082219.tif")
+pri_082219 <- (macaw_082219$p530 - macaw_082219$p570)/((macaw_082219$p530 + macaw_082219$p570))
+writeRaster(pri_082219, file.path(path_pri, "pri_082219.tif"))
+#0815
+macaw_081519 <- read_macaw(path_pri, "tomato_macawrgbpri_081519.tif")
+pri_081519 <- (macaw_081519$p530 - macaw_081519$p570)/((macaw_081519$p530 + macaw_081519$p570))
+writeRaster(pri_081519, file.path(path_pri, "pri_081519.tif"))
+#0810
+macaw_081019 <- read_macaw(path_pri, "tomato_macawrgbpri_081019.tif")
+pri_081019 <- (macaw_081019$p530 - macaw_081019$p570)/((macaw_081019$p530 + macaw_081019$p570))
+writeRaster(pri_081019, file.path(path_pri, "pri_081019.tif"))
+#0802
+macaw_080219 <- read_macaw(path_pri, "tomato_macawrgbpri_080219.tif")
+pri_080219 <- (macaw_080219$p530 - macaw_080219$p570)/((macaw_080219$p530 + macaw_080219$p570))
+writeRaster(pri_080219, file.path(path_pri, "pri_080219.tif"))
+#0628
+macaw_062819 <- read_macaw(path_pri, "tomato_macawrgbpri_062819.tif")
+pri_062819 <- (macaw_062819$p530 - macaw_062819$p570)/((macaw_062819$p530 + macaw_062819$p570))
+writeRaster(pri_062819, file.path(path_pri, "pri_062819.tif"))
+
+
+```
+
+#Read shapefiles
+```{r}
+#path_shp <- "/z0/zt92/Tomato_biomass/tomato_analysis_2019/shapefiles"
+path_shp <- "Z:/CC_UCD_atRR/data2/UAV_MeeraeTomato/shapefiles"
+
+rows_2019 <- shapefile(file.path(path_shp, "tomato_rows_2019.shp"))
+
+
+flags_2019 <- shapefile(file.path(path_shp, "flags_tomato_2019.shp"))
+
+
+rows_2019_cen1ft <- shapefile(file.path(path_shp, "tomato_rows_2019_cen1ft"))
+rows_2019_cen2ft <- shapefile(file.path(path_shp, "tomato_rows_2019_cen2ft"))
+rows_2019_cen3ft <- shapefile(file.path(path_shp, "tomato_rows_2019_cen3ft"))
+
+```
+
+#Extraction 
+##function
+```{r}
+ref_extract <- function(uav,shp, FUN, buff){
+  ext_uav <- raster::extract(uav, shp, fun = FUN, na.rm = TRUE, df = TRUE, buffer = buff)
+  ext_uav$Treatment <- shp$Treatment
+  ext_uav$Side <- shp$Side
+  ext_uav$Block <- shp$Block
+  ext_uav$Row <- shp$Row
+  #ext_uav$Plot <- shp$Plot
+  return(ext_uav)
+}
+
+```
+
+#Row average
+```{r}
+a <- ref_extract(macaw_082219, shp = rows_2019_cen1ft, FUN = mean, buff = 0)
+
+#0822
+rowmean_macaw_082219 <- ref_extract(macaw_082219, shp = rows_2019, FUN = mean, buff = 0)
+rowmean_macaw_082219_1ft <- ref_extract(macaw_082219, shp = rows_2019_cen1ft, FUN = mean, buff = 0)
+rowmean_macaw_082219_2ft <- ref_extract(macaw_082219, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
+rowmean_macaw_082219_3ft <- ref_extract(macaw_082219, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
+#0815
+rowmean_macaw_081519 <- ref_extract(macaw_081519, shp = rows_2019, FUN = mean, buff = 0)
+rowmean_macaw_081519_1ft <- ref_extract(macaw_081519, shp = rows_2019_cen1ft, FUN = mean, buff = 0)
+rowmean_macaw_081519_2ft <- ref_extract(macaw_081519, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
+rowmean_macaw_081519_3ft <- ref_extract(macaw_081519, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
+#0810
+rowmean_macaw_081019 <- ref_extract(macaw_081019, shp = rows_2019, FUN = mean, buff = 0)
+rowmean_macaw_081019_1ft <- ref_extract(macaw_081019, shp = rows_2019_cen1ft, FUN = mean, buff = 0)
+rowmean_macaw_081019_2ft <- ref_extract(macaw_081019, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
+rowmean_macaw_081019_3ft <- ref_extract(macaw_081019, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
+#0802
+rowmean_macaw_080219 <- ref_extract(macaw_080219, shp = rows_2019, FUN = mean, buff = 0)
+rowmean_macaw_080219_1ft <- ref_extract(macaw_080219, shp = rows_2019_cen1ft, FUN = mean, buff = 0)
+rowmean_macaw_080219_2ft <- ref_extract(macaw_080219, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
+rowmean_macaw_080219_3ft <- ref_extract(macaw_080219, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
+#0628
+rowmean_macaw_062819 <- ref_extract(macaw_062819, shp = rows_2019, FUN = mean, buff = 0)
+rowmean_macaw_062819_1ft <- ref_extract(macaw_062819, shp = rows_2019_cen1ft, FUN = mean, buff = 0)
+rowmean_macaw_062819_2ft <- ref_extract(macaw_062819, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
+rowmean_macaw_062819_3ft <- ref_extract(macaw_062819, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
+
+
+#combine them together
+rowmean_macaw_062819$Date <- as.Date("2019-06-28")
+rowmean_macaw_062819_1ft$Date <- as.Date("2019-06-28")
+rowmean_macaw_062819_2ft$Date <- as.Date("2019-06-28")
+rowmean_macaw_062819_3ft$Date <- as.Date("2019-06-28")
+rowmean_macaw_080219$Date <- as.Date("2019-08-02")
+rowmean_macaw_080219_1ft$Date <- as.Date("2019-08-02")
+rowmean_macaw_080219_2ft$Date <- as.Date("2019-08-02")
+rowmean_macaw_080219_3ft$Date <- as.Date("2019-08-02")
+rowmean_macaw_081019$Date <- as.Date("2019-08-10")
+rowmean_macaw_081019_1ft$Date <- as.Date("2019-08-10")
+rowmean_macaw_081019_2ft$Date <- as.Date("2019-08-10")
+rowmean_macaw_081019_3ft$Date <- as.Date("2019-08-10")
+rowmean_macaw_081519$Date <- as.Date("2019-08-15")
+rowmean_macaw_081519_1ft$Date <- as.Date("2019-08-15")
+rowmean_macaw_081519_2ft$Date <- as.Date("2019-08-15")
+rowmean_macaw_081519_3ft$Date <- as.Date("2019-08-15")
+rowmean_macaw_082219$Date <- as.Date("2019-08-22")
+rowmean_macaw_082219_1ft$Date <- as.Date("2019-08-22")
+rowmean_macaw_082219_2ft$Date <- as.Date("2019-08-22")
+rowmean_macaw_082219_3ft$Date <- as.Date("2019-08-22")
+
+rowmean_macaw <- rbind(rowmean_macaw_062819, rowmean_macaw_080219, rowmean_macaw_081019, rowmean_macaw_081519, rowmean_macaw_082219)
+rowmean_macaw_1ft <- rbind(rowmean_macaw_062819_1ft, rowmean_macaw_080219_1ft, rowmean_macaw_081019_1ft, rowmean_macaw_081519_1ft, rowmean_macaw_082219_1ft)
+rowmean_macaw_2ft <- rbind(rowmean_macaw_062819_2ft, rowmean_macaw_080219_2ft, rowmean_macaw_081019_2ft, rowmean_macaw_081519_2ft, rowmean_macaw_082219_2ft)
+rowmean_macaw_3ft <- rbind(rowmean_macaw_062819_3ft, rowmean_macaw_080219_3ft, rowmean_macaw_081019_3ft, rowmean_macaw_081519_3ft, rowmean_macaw_082219_3ft)
+
+write.csv(rowmean_macaw, file.path(path_df, "rowmean_macaw.csv"))
+```
+##Calculate PRI
+```{r}
+rowmean_macaw <- rowmean_macaw %>% mutate(pri = (p530-p570)/(p530+p570))
+```
+
+#Calculate boxplots 
+```{r}
+#subset
+rowmean_macaw_bayer <- rowmean_macaw[grepl("BAYER", rowmean_macaw$Treatment),]
+
+#0822
+temp <- subset(rowmean_macaw_bayer, Date == "2019-08-22")
+ggplot(temp, aes(x = Treatment, y = pri, color = Treatment)) + geom_boxplot()+ggtitle("08-22")
+#0815
+temp <- subset(rowmean_macaw_bayer, Date == "2019-08-15")
+ggplot(temp, aes(x = Treatment, y = pri, color = Treatment)) + geom_boxplot()+ggtitle("08-15")
+
+ggplot(rowmean_macaw_bayer, aes(x = Date, y = pri, color = Treatment)) + geom_point()
+```
+
