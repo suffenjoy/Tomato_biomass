@@ -9,6 +9,7 @@ output: html_document
 library(raster)
 library(ggplot2)
 library(dplyr)
+library(stringr)
 ```
 
 #Read macaw imgs
@@ -141,17 +142,31 @@ rowmean_macaw_1ft <- rbind(rowmean_macaw_062819_1ft, rowmean_macaw_080219_1ft, r
 rowmean_macaw_2ft <- rbind(rowmean_macaw_062819_2ft, rowmean_macaw_080219_2ft, rowmean_macaw_081019_2ft, rowmean_macaw_081519_2ft, rowmean_macaw_082219_2ft)
 rowmean_macaw_3ft <- rbind(rowmean_macaw_062819_3ft, rowmean_macaw_080219_3ft, rowmean_macaw_081019_3ft, rowmean_macaw_081519_3ft, rowmean_macaw_082219_3ft)
 
-write.csv(rowmean_macaw, file.path(path_df, "rowmean_macaw.csv"))
 ```
 ##Calculate PRI
 ```{r}
+##raw PRI
 rowmean_macaw <- rowmean_macaw %>% mutate(pri = (p530-p570)/(p530+p570))
+rowmean_macaw_1ft <- rowmean_macaw_1ft %>% mutate(pri = (p530-p570)/(p530+p570))
+rowmean_macaw_2ft <- rowmean_macaw_2ft %>% mutate(pri = (p530-p570)/(p530+p570))
+rowmean_macaw_3ft <- rowmean_macaw_3ft %>% mutate(pri = (p530-p570)/(p530+p570))
+
+path_df <- "C:/Users/zt92/Box Sync/BIOSTIMULANT FIELD SCREENING MASTER FOLDER/DRONE/macaw_pri/dataframes"
+write.csv(rowmean_macaw, file.path(path_df, "rowmean_macaw.csv"), row.names = FALSE)
+write.csv(rowmean_macaw_1ft, file.path(path_df, "rowmean_macaw_1ft.csv"), row.names = FALSE)
+write.csv(rowmean_macaw_2ft, file.path(path_df, "rowmean_macaw_2ft.csv"), row.names = FALSE)
+write.csv(rowmean_macaw_3ft, file.path(path_df, "rowmean_macaw_3ft.csv"), row.names = FALSE)
+
+##corrected PRI
 ```
 
 #Calculate boxplots 
 ```{r}
 #subset
 rowmean_macaw_bayer <- rowmean_macaw[grepl("BAYER", rowmean_macaw$Treatment),]
+##dd, ww, ddd
+rowmean_macaw_ddd <- rowmean_macaw[grepl("DDD", rowmean_macaw$Treatment),]
+rowmean_macaw$DW <- (rowmean_macaw$Treatment)
 
 #0822
 temp <- subset(rowmean_macaw_bayer, Date == "2019-08-22")
@@ -161,5 +176,6 @@ temp <- subset(rowmean_macaw_bayer, Date == "2019-08-15")
 ggplot(temp, aes(x = Treatment, y = pri, color = Treatment)) + geom_boxplot()+ggtitle("08-15")
 
 ggplot(rowmean_macaw_bayer, aes(x = Date, y = pri, color = Treatment)) + geom_point()
+
 ```
 
