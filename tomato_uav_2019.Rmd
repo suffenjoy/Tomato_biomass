@@ -9,6 +9,7 @@ output: html_document
 ```{r}
 library(raster)
 library(ggplot2)
+library(EBImage)
 ```
 
 #read uav 
@@ -235,114 +236,9 @@ ggplot(flagmean_uav_081519, aes(x = as.factor(Row), y = ndvi, color = Treatment)
 
 #-------------------------------
 #Thermal
-##mask non-veg pixels
-```{r}
-path_output <- "Z:/CC_UCD_atRR/data2/UAV_MeeraeTomato/outputs"
 
-veg_061219 <- calc(uav_061219$ndvi, function(x){x[x<0.7]<- NA; return(x)})
-uav_061219_masked <- raster::mask(uav_061219, veg_061219)
-writeRaster(veg_061219, file.path(path_output, "veg_061219_ndvi0.7.tif"))
-rm(veg_061219)
-writeRaster(uav_061219_masked, file.path(path_output, "uav_061219_masked.tif"))
-rm(uav_061219_masked)
-
-
-veg_062819 <- calc(uav_062819$ndvi, function(x){x[x<0.7]<- NA; return(x)})
-uav_062819_masked <- raster::mask(uav_062819, veg_062819)
-therm_062819_masked <- raster::mask(therm_062819, resample(veg_062819, therm_062819))
-writeRaster(therm_062819_masked, file.path(path_output, "therm_062819_masked.tif"))
-rm(therm_062819_masked)
-writeRaster(veg_062819, file.path(path_output, "veg_062819_ndvi0.7.tif"))
-rm(veg_062819)
-writeRaster(uav_062819_masked, file.path(path_output, "uav_062819_masked.tif"))
-rm(uav_062819_masked)
-
-
-
-
-veg_071219 <- calc(uav_071219$ndvi, function(x){x[x<0.7]<- NA; return(x)})
-uav_071219_masked <- raster::mask(uav_071219, veg_071219)
-therm_071219_masked <- raster::mask(therm_071219, resample(veg_071219, therm_071219))
-writeRaster(veg_071219, file.path(path_output, "veg_071219_ndvi0.7.tif"))
-rm(veg_071219)
-writeRaster(therm_071219_masked, file.path(path_output, "therm_071219_masked.tif"))
-rm(therm_071219_masked)
-writeRaster(uav_071219_masked, file.path(path_output, "uav_071219_masked.tif"))
-rm(uav_071219_masked)
-
-
-veg_071719 <- calc(uav_071719$ndvi, function(x){x[x<0.7]<- NA; return(x)})
-uav_071719_masked <- raster::mask(uav_071719, veg_071719)
-therm_071719_masked <- raster::mask(therm_071719, resample(veg_071719, therm_071719))
-writeRaster(veg_071719, file.path(path_output, "veg_071719_ndvi0.7.tif"))
-writeRaster(uav_071719_masked, file.path(path_output, "uav_071719_masked.tif"))
-writeRaster(therm_071719_masked, file.path(path_output, "therm_071719_masked.tif"))
-rm(veg_071719)
-rm(uav_071719_masked)
-rm(therm_071719_masked)
-
-
-veg_072619 <- calc(uav_072619$ndvi, function(x){x[x<0.7]<- NA; return(x)})
-uav_072619_masked <- raster::mask(uav_072619, veg_072619)
-therm_072619_masked <- raster::mask(therm_072619, resample(veg_072619, therm_072619))
-writeRaster(veg_072619, file.path(path_output, "veg_072619_ndvi0.7.tif"))
-rm(veg_072619)
-writeRaster(therm_072619_masked, file.path(path_output, "therm_072619_masked.tif"))
-rm(therm_072619_masked)
-writeRaster(uav_072619_masked, file.path(path_output, "uav_072619_masked.tif"))
-rm(uav_072619_masked)
-
-
-veg_080219 <- calc(uav_080219$ndvi, function(x){x[x<0.7]<- NA; return(x)})
-uav_080219_masked <- raster::mask(uav_080219, veg_080219)
-therm_080219_masked <- raster::mask(therm_080219, resample(veg_080219, therm_080219))
-writeRaster(veg_080219, file.path(path_output, "veg_080219_ndvi0.7.tif"))
-rm(veg_080219)
-writeRaster(therm_080219_masked, file.path(path_output, "therm_080219_masked.tif"))
-rm(therm_080219_masked)
-writeRaster(uav_080219_masked, file.path(path_output, "uav_080219_masked.tif"))
-rm(uav_080219_masked)
-
-
-
-veg_081019 <- calc(uav_081019$ndvi, function(x){x[x<0.7]<- NA; return(x)})
-uav_081019_masked <- raster::mask(uav_081019, veg_081019)
-therm_081019_masked <- raster::mask(therm_081019, resample(veg_081019, therm_081019))
-writeRaster(veg_081019, file.path(path_output, "veg_081019_ndvi0.7.tif"))
-rm(veg_081019)
-writeRaster(therm_081019_masked, file.path(path_output, "therm_081019_masked.tif"))
-rm(therm_081019_masked)
-writeRaster(uav_081019_masked, file.path(path_output, "uav_081019_masked.tif"))
-rm(uav_081019_masked)
-
-
-
-veg_081519 <- calc(uav_081519$ndvi, function(x){x[x<0.7]<- NA; return(x)})
-uav_081519_masked <- raster::mask(uav_081519, veg_081519)
-therm_081519_masked <- raster::mask(therm_081519, resample(veg_081519, therm_081519))
-writeRaster(therm_081519_masked, file.path(path_output, "therm_081519_masked.tif"))
-rm(therm_081519_masked)
-writeRaster(veg_081519, file.path(path_output, "veg_081519_ndvi0.7.tif"))
-rm(veg_081519)
-writeRaster(uav_081519_masked, file.path(path_output, "uav_081519_masked.tif"))
-rm(uav_081519_masked)
-
-
-
-
-
-plot(therm_062819_masked)
-plot(therm_071219_masked)
-plot(therm_071719_masked)
-plot(therm_072619_masked)
-plot(therm_080219_masked)
-plot(therm_081019_masked)
-plot(therm_081519_masked)
-plot(flags_2019, add = TRUE)
-```
-
-#extraction of thermal data 
-##extraction without removing soil pixels
+#Extraction thermal data 
+##Extraction without removing soil pixels
 ###Row average
 ```{r}
 #0612
@@ -450,11 +346,11 @@ rowmean_therm_082219_3ft$Date <- "2019-08-22"
 
 #combine them together 
 ##1ft 
-rowmean_therm_1ft <- rbind(rowmean_therm_061219_1ft, rowmean_therm_062819_1ft, rowmean_therm_071219_1ft, rowmean_therm_071719_1ft, rowmean_therm_072619_1ft, rowmean_therm_080219_1ft, rowmean_therm_081019_1ft, rowmean_therm_081519_1ft, rowmean_therm_081519_1ft)
+rowmean_therm_1ft <- rbind(rowmean_therm_061219_1ft, rowmean_therm_062819_1ft, rowmean_therm_071219_1ft, rowmean_therm_071719_1ft, rowmean_therm_072619_1ft, rowmean_therm_080219_1ft, rowmean_therm_081019_1ft, rowmean_therm_081519_1ft, rowmean_therm_082219_1ft)
 ##2ft
-rowmean_therm_2ft <- rbind(rowmean_therm_061219_2ft, rowmean_therm_062819_2ft, rowmean_therm_071219_2ft, rowmean_therm_071719_2ft, rowmean_therm_072619_2ft, rowmean_therm_080219_2ft, rowmean_therm_081019_2ft, rowmean_therm_081519_2ft, rowmean_therm_081519_2ft)
+rowmean_therm_2ft <- rbind(rowmean_therm_061219_2ft, rowmean_therm_062819_2ft, rowmean_therm_071219_2ft, rowmean_therm_071719_2ft, rowmean_therm_072619_2ft, rowmean_therm_080219_2ft, rowmean_therm_081019_2ft, rowmean_therm_081519_2ft, rowmean_therm_082219_2ft)
 ##3ft
-rowmean_therm_3ft <- rbind(rowmean_therm_061219_3ft, rowmean_therm_062819_3ft, rowmean_therm_071219_3ft, rowmean_therm_071719_3ft, rowmean_therm_072619_3ft, rowmean_therm_080219_3ft, rowmean_therm_081019_3ft, rowmean_therm_081519_3ft, rowmean_therm_081519_3ft)
+rowmean_therm_3ft <- rbind(rowmean_therm_061219_3ft, rowmean_therm_062819_3ft, rowmean_therm_071219_3ft, rowmean_therm_071719_3ft, rowmean_therm_072619_3ft, rowmean_therm_080219_3ft, rowmean_therm_081019_3ft, rowmean_therm_081519_3ft, rowmean_therm_082219_3ft)
 
 #output
 path_df <- "/z0/zt92/Tomato_biomass/tomato_analysis_2019/dataframes"
@@ -571,11 +467,11 @@ flagmean_therm_082219_3ft$Date <- "2019-08-22"
 
 #combine them together 
 ##1ft 
-flagmean_therm_1ft <- rbind(flagmean_therm_061219_1ft, flagmean_therm_062819_1ft, flagmean_therm_071219_1ft, flagmean_therm_071719_1ft, flagmean_therm_072619_1ft, flagmean_therm_080219_1ft, flagmean_therm_081019_1ft, flagmean_therm_081519_1ft, flagmean_therm_081519_1ft)
+flagmean_therm_1ft <- rbind(flagmean_therm_061219_1ft, flagmean_therm_062819_1ft, flagmean_therm_071219_1ft, flagmean_therm_071719_1ft, flagmean_therm_072619_1ft, flagmean_therm_080219_1ft, flagmean_therm_081019_1ft, flagmean_therm_081519_1ft, flagmean_therm_082219_1ft)
 ##2ft
-flagmean_therm_2ft <- rbind(flagmean_therm_061219_2ft, flagmean_therm_062819_2ft, flagmean_therm_071219_2ft, flagmean_therm_071719_2ft, flagmean_therm_072619_2ft, flagmean_therm_080219_2ft, flagmean_therm_081019_2ft, flagmean_therm_081519_2ft, flagmean_therm_081519_2ft)
+flagmean_therm_2ft <- rbind(flagmean_therm_061219_2ft, flagmean_therm_062819_2ft, flagmean_therm_071219_2ft, flagmean_therm_071719_2ft, flagmean_therm_072619_2ft, flagmean_therm_080219_2ft, flagmean_therm_081019_2ft, flagmean_therm_081519_2ft, flagmean_therm_082219_2ft)
 ##3ft
-flagmean_therm_3ft <- rbind(flagmean_therm_061219_3ft, flagmean_therm_062819_3ft, flagmean_therm_071219_3ft, flagmean_therm_071719_3ft, flagmean_therm_072619_3ft, flagmean_therm_080219_3ft, flagmean_therm_081019_3ft, flagmean_therm_081519_3ft, flagmean_therm_081519_3ft)
+flagmean_therm_3ft <- rbind(flagmean_therm_061219_3ft, flagmean_therm_062819_3ft, flagmean_therm_071219_3ft, flagmean_therm_071719_3ft, flagmean_therm_072619_3ft, flagmean_therm_080219_3ft, flagmean_therm_081019_3ft, flagmean_therm_081519_3ft, flagmean_therm_082219_3ft)
 
 #output
 path_df <- "/z0/zt92/Tomato_biomass/tomato_analysis_2019/dataframes"
@@ -586,6 +482,123 @@ write.csv(flagmean_therm_3ft, file.path(path_df, "flagmean_therm_3ft.csv"), row.
 
 ```
 
+##Extracting after removing soil pixels
+###mask non-veg pixels
+####Automated threshold generation with Otsu
+```{r}
+
+```
+
+####Set 0.7 as the threshold 
+```{r}
+#path_output <- "Z:/CC_UCD_atRR/data2/UAV_MeeraeTomato/outputs"
+path_output <- "/z0/zt92/Tomato_biomass/tomato_analysis_2019/outputs"
+
+veg_061219 <- calc(uav_061219$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+uav_061219_masked <- raster::mask(uav_061219, veg_061219)
+therm_061219_masked <- raster::mask(therm_061219, resample(veg_061219, therm_061219))
+writeRaster(therm_061219_masked, file.path(path_output, "therm_061219_masked.tif"))
+writeRaster(veg_061219, file.path(path_output, "veg_061219_ndvi0.7.tif"))
+rm(veg_061219)
+writeRaster(uav_061219_masked, file.path(path_output, "uav_061219_masked.tif"))
+rm(uav_061219_masked)
+
+veg_062819 <- calc(uav_062819$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+uav_062819_masked <- raster::mask(uav_062819, veg_062819)
+therm_062819_masked <- raster::mask(therm_062819, resample(veg_062819, therm_062819))
+writeRaster(therm_062819_masked, file.path(path_output, "therm_062819_masked.tif"))
+rm(therm_062819_masked)
+writeRaster(veg_062819, file.path(path_output, "veg_062819_ndvi0.7.tif"))
+rm(veg_062819)
+writeRaster(uav_062819_masked, file.path(path_output, "uav_062819_masked.tif"))
+rm(uav_062819_masked)
+
+veg_071219 <- calc(uav_071219$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+uav_071219_masked <- raster::mask(uav_071219, veg_071219)
+therm_071219_masked <- raster::mask(therm_071219, resample(veg_071219, therm_071219))
+writeRaster(veg_071219, file.path(path_output, "veg_071219_ndvi0.7.tif"))
+rm(veg_071219)
+writeRaster(therm_071219_masked, file.path(path_output, "therm_071219_masked.tif"))
+rm(therm_071219_masked)
+writeRaster(uav_071219_masked, file.path(path_output, "uav_071219_masked.tif"))
+rm(uav_071219_masked)
+
+veg_071719 <- calc(uav_071719$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+uav_071719_masked <- raster::mask(uav_071719, veg_071719)
+therm_071719_masked <- raster::mask(therm_071719, resample(veg_071719, therm_071719))
+writeRaster(veg_071719, file.path(path_output, "veg_071719_ndvi0.7.tif"))
+writeRaster(uav_071719_masked, file.path(path_output, "uav_071719_masked.tif"))
+writeRaster(therm_071719_masked, file.path(path_output, "therm_071719_masked.tif"))
+rm(veg_071719)
+rm(uav_071719_masked)
+rm(therm_071719_masked)
+
+veg_072619 <- calc(uav_072619$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+uav_072619_masked <- raster::mask(uav_072619, veg_072619)
+therm_072619_masked <- raster::mask(therm_072619, resample(veg_072619, therm_072619))
+writeRaster(veg_072619, file.path(path_output, "veg_072619_ndvi0.7.tif"))
+rm(veg_072619)
+writeRaster(therm_072619_masked, file.path(path_output, "therm_072619_masked.tif"))
+rm(therm_072619_masked)
+writeRaster(uav_072619_masked, file.path(path_output, "uav_072619_masked.tif"))
+rm(uav_072619_masked)
+
+
+veg_080219 <- calc(uav_080219$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+uav_080219_masked <- raster::mask(uav_080219, veg_080219)
+therm_080219_masked <- raster::mask(therm_080219, resample(veg_080219, therm_080219))
+writeRaster(veg_080219, file.path(path_output, "veg_080219_ndvi0.7.tif"))
+rm(veg_080219)
+writeRaster(therm_080219_masked, file.path(path_output, "therm_080219_masked.tif"))
+rm(therm_080219_masked)
+writeRaster(uav_080219_masked, file.path(path_output, "uav_080219_masked.tif"))
+rm(uav_080219_masked)
+
+veg_081019 <- calc(uav_081019$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+uav_081019_masked <- raster::mask(uav_081019, veg_081019)
+therm_081019_masked <- raster::mask(therm_081019, resample(veg_081019, therm_081019))
+writeRaster(veg_081019, file.path(path_output, "veg_081019_ndvi0.7.tif"))
+rm(veg_081019)
+writeRaster(therm_081019_masked, file.path(path_output, "therm_081019_masked.tif"))
+rm(therm_081019_masked)
+writeRaster(uav_081019_masked, file.path(path_output, "uav_081019_masked.tif"))
+rm(uav_081019_masked)
+
+
+
+veg_081519 <- calc(uav_081519$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+uav_081519_masked <- raster::mask(uav_081519, veg_081519)
+therm_081519_masked <- raster::mask(therm_081519, resample(veg_081519, therm_081519))
+writeRaster(therm_081519_masked, file.path(path_output, "therm_081519_masked.tif"))
+rm(therm_081519_masked)
+writeRaster(veg_081519, file.path(path_output, "veg_081519_ndvi0.7.tif"))
+rm(veg_081519)
+writeRaster(uav_081519_masked, file.path(path_output, "uav_081519_masked.tif"))
+rm(uav_081519_masked)
+
+veg_082219 <- calc(uav_082219$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+uav_082219_masked <- raster::mask(uav_082219, veg_082219)
+therm_082219_masked <- raster::mask(therm_082219, resample(veg_082219, therm_082219))
+writeRaster(therm_082219_masked, file.path(path_output, "therm_082219_masked.tif"))
+rm(therm_082219_masked)
+writeRaster(veg_082219, file.path(path_output, "veg_082219_ndvi0.7.tif"))
+rm(veg_082219)
+writeRaster(uav_082219_masked, file.path(path_output, "uav_082219_masked.tif"))
+rm(uav_082219_masked)
+
+
+
+plot(therm_062819_masked)
+plot(therm_071219_masked)
+plot(therm_071719_masked)
+plot(therm_072619_masked)
+plot(therm_080219_masked)
+plot(therm_081019_masked)
+plot(therm_081519_masked)
+plot(flags_2019, add = TRUE)
+```
+
+###
 ```{r}
 ggplot(subset(flagmean_therm_062819, Side == "WEST"), aes(x = as.factor(Treatment), y= thermal, color = Treatment)) + geom_boxplot()
 ggplot(subset(flagmean_therm_062819, Side == "EAST"), aes(x = as.factor(Treatment), y= thermal, color = Treatment)) + geom_boxplot()
@@ -651,30 +664,139 @@ a
 ```
 
 
+
+###Row average
+####Read masked thermal tiff
 ```{r}
-flagmean_therm_062819$Date <- "2019-06-28"
-flagmean_therm_071219$Date <- "2019-07-12"
-flagmean_therm_071719$Date <- "2019-07-17"
-flagmean_therm <- rbind(flagmean_therm_062819, flagmean_therm_071219, flagmean_therm_071719)
-flagmean_uav_061219$Date <- "2019-06-12"
-flagmean_uav_062819$Date <- "2019-06-28"
-flagmean_uav_071219$Date <- "2019-07-12"
-flagmean_uav_071719$Date <- "2019-07-17"
-flagmean_uav <- rbind(flagmean_uav_061219, flagmean_uav_062819, flagmean_uav_071219, flagmean_uav_071719)
+therm_061219_masked <- raster::raster(file.path(path_output, "therm_061219_masked.tif"))
+therm_062819_masked <- raster::raster(file.path(path_output, "therm_062819_masked.tif"))
+therm_071219_masked <- raster::raster(file.path(path_output, "therm_071219_masked.tif"))
+therm_071719_masked <- raster::raster(file.path(path_output, "therm_071719_masked.tif"))
+therm_072619_masked <- raster::raster(file.path(path_output, "therm_072619_masked.tif"))
+therm_080219_masked <- raster::raster(file.path(path_output, "therm_080219_masked.tif"))
+therm_081019_masked <- raster::raster(file.path(path_output, "therm_081019_masked.tif"))
+therm_081519_masked <- raster::raster(file.path(path_output, "therm_081519_masked.tif"))
+therm_082219_masked <- raster::raster(file.path(path_output, "therm_082219_masked.tif"))
+
+```
+####Extraction 
+```{r}
+#0612
+rowmean_therm_061219_masked_1ft <- ref_extract(therm_061219_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_therm_061219_masked_2ft <- ref_extract(therm_061219_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_therm_061219_masked_3ft <- ref_extract(therm_061219_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+names(rowmean_therm_061219_masked_1ft)[2] <- "thermal"
+names(rowmean_therm_061219_masked_2ft)[2] <- "thermal"
+names(rowmean_therm_061219_masked_3ft)[2] <- "thermal"
 
 
-#output 
-write.csv(flagmean_therm_071719, file.path(path_df, "flagmean_therm_071719.csv"), row.names = FALSE)
-write.csv(flagmean_therm_072619, file.path(path_df, "flagmean_therm_072619.csv"), row.names = FALSE)
-write.csv(flagmean_therm_080219, file.path(path_df, "flagmean_therm_080219.csv"), row.names = FALSE)
-write.csv(flagmean_therm_081019, file.path(path_df, "flagmean_therm_081019.csv"), row.names = FALSE)
-write.csv(flagmean_therm_081519, file.path(path_df, "flagmean_therm_081519.csv"), row.names = FALSE)
+#0628
+rowmean_therm_062819_masked_1ft <- ref_extract(therm_062819_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_therm_062819_masked_2ft <- ref_extract(therm_062819_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_therm_062819_masked_3ft <- ref_extract(therm_062819_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+names(rowmean_therm_062819_masked_1ft)[2] <- "thermal"
+names(rowmean_therm_062819_masked_2ft)[2] <- "thermal"
+names(rowmean_therm_062819_masked_3ft)[2] <- "thermal"
 
-write.csv(flagmean_uav_071719, file.path(path_df, "flagmean_uav_071719.csv"), row.names = FALSE)
-write.csv(flagmean_uav_072619, file.path(path_df, "flagmean_uav_072619.csv"), row.names = FALSE)
-write.csv(flagmean_uav_080219, file.path(path_df, "flagmean_uav_080219.csv"), row.names = FALSE)
-write.csv(flagmean_uav_081019, file.path(path_df, "flagmean_uav_081019.csv"), row.names = FALSE)
-write.csv(flagmean_uav_081519, file.path(path_df, "flagmean_uav_081519.csv"), row.names = FALSE)
+#0712
+rowmean_therm_071219_masked_1ft <- ref_extract(therm_071219_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_therm_071219_masked_2ft <- ref_extract(therm_071219_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_therm_071219_masked_3ft <- ref_extract(therm_071219_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+names(rowmean_therm_071219_masked_1ft)[2] <- "thermal"
+names(rowmean_therm_071219_masked_2ft)[2] <- "thermal"
+names(rowmean_therm_071219_masked_3ft)[2] <- "thermal"
+
+#0717
+rowmean_therm_071719_masked_1ft <- ref_extract(therm_071719_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_therm_071719_masked_2ft <- ref_extract(therm_071719_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_therm_071719_masked_3ft <- ref_extract(therm_071719_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+names(rowmean_therm_071719_masked_1ft)[2] <- "thermal"
+names(rowmean_therm_071719_masked_2ft)[2] <- "thermal"
+names(rowmean_therm_071719_masked_3ft)[2] <- "thermal"
+
+#0726
+rowmean_therm_072619_masked_1ft <- ref_extract(therm_072619_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_therm_072619_masked_2ft <- ref_extract(therm_072619_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_therm_072619_masked_3ft <- ref_extract(therm_072619_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+names(rowmean_therm_072619_masked_1ft)[2] <- "thermal"
+names(rowmean_therm_072619_masked_2ft)[2] <- "thermal"
+names(rowmean_therm_072619_masked_3ft)[2] <- "thermal"
+
+#0802
+rowmean_therm_080219_masked_1ft <- ref_extract(therm_080219_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_therm_080219_masked_2ft <- ref_extract(therm_080219_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_therm_080219_masked_3ft <- ref_extract(therm_080219_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+names(rowmean_therm_080219_masked_1ft)[2] <- "thermal"
+names(rowmean_therm_080219_masked_2ft)[2] <- "thermal"
+names(rowmean_therm_080219_masked_3ft)[2] <- "thermal"
+
+#0810
+rowmean_therm_081019_masked_1ft <- ref_extract(therm_081019_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_therm_081019_masked_2ft <- ref_extract(therm_081019_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_therm_081019_masked_3ft <- ref_extract(therm_081019_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+names(rowmean_therm_081019_masked_1ft)[2] <- "thermal"
+names(rowmean_therm_081019_masked_2ft)[2] <- "thermal"
+names(rowmean_therm_081019_masked_3ft)[2] <- "thermal"
+
+#0815
+rowmean_therm_081519_masked_1ft <- ref_extract(therm_081519_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_therm_081519_masked_2ft <- ref_extract(therm_081519_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_therm_081519_masked_3ft <- ref_extract(therm_081519_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+names(rowmean_therm_081519_masked_1ft)[2] <- "thermal"
+names(rowmean_therm_081519_masked_2ft)[2] <- "thermal"
+names(rowmean_therm_081519_masked_3ft)[2] <- "thermal"
+
+#0822
+rowmean_therm_082219_masked_1ft <- ref_extract(therm_082219_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_therm_082219_masked_2ft <- ref_extract(therm_082219_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_therm_082219_masked_3ft <- ref_extract(therm_082219_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+names(rowmean_therm_082219_masked_1ft)[2] <- "thermal"
+names(rowmean_therm_082219_masked_2ft)[2] <- "thermal"
+names(rowmean_therm_082219_masked_3ft)[2] <- "thermal"
+
+#add date 
+rowmean_therm_061219_masked_1ft$Date <- "2019-06-12"
+rowmean_therm_061219_masked_2ft$Date <- "2019-06-12"
+rowmean_therm_061219_masked_3ft$Date <- "2019-06-12"
+rowmean_therm_062819_masked_1ft$Date <- "2019-06-28"
+rowmean_therm_062819_masked_2ft$Date <- "2019-06-28"
+rowmean_therm_062819_masked_3ft$Date <- "2019-06-28"
+rowmean_therm_071219_masked_1ft$Date <- "2019-07-12"
+rowmean_therm_071219_masked_2ft$Date <- "2019-07-12"
+rowmean_therm_071219_masked_3ft$Date <- "2019-07-12"
+rowmean_therm_071719_masked_1ft$Date <- "2019-07-17"
+rowmean_therm_071719_masked_2ft$Date <- "2019-07-17"
+rowmean_therm_071719_masked_3ft$Date <- "2019-07-17"
+rowmean_therm_072619_masked_1ft$Date <- "2019-07-26"
+rowmean_therm_072619_masked_2ft$Date <- "2019-07-26"
+rowmean_therm_072619_masked_3ft$Date <- "2019-07-26"
+rowmean_therm_080219_masked_1ft$Date <- "2019-08-02"
+rowmean_therm_080219_masked_2ft$Date <- "2019-08-02"
+rowmean_therm_080219_masked_3ft$Date <- "2019-08-02"
+rowmean_therm_081019_masked_1ft$Date <- "2019-08-10"
+rowmean_therm_081019_masked_2ft$Date <- "2019-08-10"
+rowmean_therm_081019_masked_3ft$Date <- "2019-08-10"
+rowmean_therm_081519_masked_1ft$Date <- "2019-08-15"
+rowmean_therm_081519_masked_2ft$Date <- "2019-08-15"
+rowmean_therm_081519_masked_3ft$Date <- "2019-08-15"
+rowmean_therm_082219_masked_1ft$Date <- "2019-08-22"
+rowmean_therm_082219_masked_2ft$Date <- "2019-08-22"
+rowmean_therm_082219_masked_3ft$Date <- "2019-08-22"
+
+
+#combine them together 
+##1ft 
+rowmean_therm_masked_1ft <- rbind(rowmean_therm_061219_masked_1ft, rowmean_therm_062819_masked_1ft, rowmean_therm_071219_masked_1ft, rowmean_therm_071719_masked_1ft, rowmean_therm_072619_masked_1ft, rowmean_therm_080219_masked_1ft, rowmean_therm_081019_masked_1ft, rowmean_therm_081519_masked_1ft, rowmean_therm_082219_masked_1ft)
+##2ft
+rowmean_therm_masked_2ft <- rbind(rowmean_therm_061219_masked_2ft, rowmean_therm_062819_masked_2ft, rowmean_therm_071219_masked_2ft, rowmean_therm_071719_masked_2ft, rowmean_therm_072619_masked_2ft, rowmean_therm_080219_masked_2ft, rowmean_therm_081019_masked_2ft, rowmean_therm_081519_masked_2ft, rowmean_therm_082219_masked_2ft)
+##3ft
+rowmean_therm_masked_3ft <- rbind(rowmean_therm_061219_masked_3ft, rowmean_therm_062819_masked_3ft, rowmean_therm_071219_masked_3ft, rowmean_therm_071719_masked_3ft, rowmean_therm_072619_masked_3ft, rowmean_therm_080219_masked_3ft, rowmean_therm_081019_masked_3ft, rowmean_therm_081519_masked_3ft, rowmean_therm_082219_masked_3ft)
+
+#output
+path_df <- "/z0/zt92/Tomato_biomass/tomato_analysis_2019/dataframes"
+write.csv(rowmean_therm_masked_1ft, file.path(path_df, "rowmean_therm_masked_1ft.csv"), row.names = FALSE)
+write.csv(rowmean_therm_masked_2ft, file.path(path_df, "rowmean_therm_masked_2ft.csv"), row.names = FALSE)
+write.csv(rowmean_therm_masked_3ft, file.path(path_df, "rowmean_therm_masked_3ft.csv"), row.names = FALSE)
 
 ```
 
