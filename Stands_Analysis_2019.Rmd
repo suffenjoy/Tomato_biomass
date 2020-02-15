@@ -16,6 +16,7 @@ library(wesanderson)
 library(tidyr)
 library(reshape2)
 library(gridExtra)
+library(GeoLight)
 library(raster)
 library(readxl)
 ```
@@ -162,6 +163,16 @@ p8 = ggplot(subset(gssb, Date == "2019-08-15" & Time > 9 & Time < 18), aes(x = T
 grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8,nrow = 2, ncol =4) 
 
 ```
+##Calculate PRI0
+PRI0 is the data when the solar zenith is smaller than 40 degree
+###Filter by 
+```{r}
+#calculate the solar zenith angle 
+gssb$Zenith <- zenith(solar(gssb$TIMESTAMP), lon = -121.7711, lat = 38.5346)
+
+gssb <- 
+
+```
 
 #Seasonal Change
 ##function to calculate daily average
@@ -292,9 +303,11 @@ dim(gs_daily)
 dim(SWP_stands)
 
 #plot
-ggplot(gs_daily_swp, aes(x = Date, y = SWP, color = ID)) + geom_point() + scale_color_d3()
+ggplot(subset(gs_daily_swp, Date != "2019-05-31"), aes(x = Date, y = PRI_NDVI_scale, color = ID)) + geom_point() + scale_color_d3()
+ggplot(subset(gs_daily_swp, Date != "2019-05-31"), aes(x = Date, y = -SWP, color = ID)) + geom_point() + scale_color_d3()
 
 ggplot(subset(gs_daily_swp, Date != "2019-05-31"), aes(y = -SWP, x = PRI_NDVI_scale)) + geom_point(aes(color = as.factor(Date))) + scale_color_d3() + geom_smooth(method = "lm") + ylab("Stem Water Potential (Bars)") + xlab("PRIsc-NDVIsc")
+
 
 lm1 <- lm(-SWP~PRI_NDVI_scale, subset(gs_daily_swp, Date != "2019-05-31"))
 summary(lm1)
@@ -302,7 +315,15 @@ cor(subset(gs_daily_swp, Date != "2019-05-31")$PRI_NDVI_scale, subset(gs_daily_s
 ```
 
 #Include weather data
+##Read data
 ```{r}
+path_stands <- "C:/Users/zt92/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/Stands"
+weather <- read.csv(file.path(path_stands, "S.WEATHER.csv"))
+head(weather)
+names(weather)[1] <- "TIMESTAMP"
+weather$TIMESTAMP <- as.POSIXct(weather$TIMESTAMP, format = "%m/%d/%Y %H:%M")
+names(weather)
+
 
 ```
 
