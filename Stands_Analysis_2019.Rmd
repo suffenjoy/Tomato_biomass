@@ -19,6 +19,7 @@ library(gridExtra)
 library(GeoLight)
 library(raster)
 library(readxl)
+library(zoo)
 ```
 
 
@@ -165,12 +166,65 @@ grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8,nrow = 2, ncol =4)
 ```
 ##Calculate PRI0
 PRI0 is the data when the solar zenith is smaller than 40 degree
-###Filter by 
+###Filter by zenith anlge 
 ```{r}
 #calculate the solar zenith angle 
+
 gssb$Zenith <- zenith(solar(gssb$TIMESTAMP), lon = -121.7711, lat = 38.5346)
 
-gssb <- 
+gssb <- subset(gssb, Zenith < 40)
+
+unique(gssb$Time)
+```
+###PRI0 
+```{r}
+temp_ls <- split(gssb, list(gssb$ID, gssb$Date))
+length(temp_ls)
+PRI0_daily <- data.frame("Date"=NA, "Time"=NA,"ID"=NA, "PRIm"=NA)
+for(i in 1:length(temp_ls)){
+  temp_df <- temp_ls[[i]]
+  temp_df <- temp_df[order(temp_df$Time),]
+  PRI0_daily[i,] <- temp_df[1,c("Date","Time","ID","PRIm")]
+}
+head(PRI0_daily)
+dim(PRI0_daily)
+ggplot(PRI0_daily, aes(x = Date, y = Time)) + geom_point()
+
+
+temp_ls <- split(gssb, gssb$ID)
+
+Time_early <- aggregate(gssb$Time, list("Date" = gssb$Date), FUN = min)
+Time_late <- aggregate(gssb$Time, list("Date" = gssb$Date), FUN = max)
+
+Time_early
+Time_late
+Time_PRI0 <- merge(Time_early, Time_late, by = c("Date"))
+names(Time_PRI0)[c(2,3)] <- c("Early","Late")
+
+Time_PRI0 <- gather(Time_PRI0, key = "Category",value = Time, Early, Late, factor_key = TRUE)
+head(Time_PRI0)
+ggplot(Time_PRI0, aes(x = Date, y = Time, color = Category)) + geom_point()
+names(Time_PRI0)[3] <- "Time"
+
+
+PRI0_daily <- merge(subset(Time_PRI0, Category == "Early"), gssb, by = c("Date","Time"))
+PRI0_daily <- PRI0_daily[,c("Date","Time","ID","PRIm")]
+dim(PRI0_daily)  #927 rows, should be 960 rows
+sapply(split(PRI0_daily,PRI0_daily$Date), function(x){dim(x)[1]})
+
+length(PRI0_daily$PRIm)
+dim(gssb)
+PRI0_daily$PRIm
+gssb$PRI0 <- PRI0_daily$PRIm
+
+names(a)[3] <- "Time"
+b <- merge(a, gssb, by = c("Date", "ID", "Time"))
+dim(a)
+dim(b)
+a <- lapply(temp_ls, function(x){x})
+a <- lapply(temp_ls, function(x){x[order(Time),]})
+temp_agg <- aggregate(gs[,c("X532IN","X570IN","X650IN","X810IN")], list("TIMESTAMP" = gs$TIMESTAMP), FUN = function(x){sd(x, na.rm =  TRUE)})
+
 
 ```
 
@@ -324,6 +378,39 @@ names(weather)[1] <- "TIMESTAMP"
 weather$TIMESTAMP <- as.POSIXct(weather$TIMESTAMP, format = "%m/%d/%Y %H:%M")
 names(weather)
 
+#subset columns
+weather <- weather[,c("TIMESTAMP","RADIATION.WM2","AIR.TEMP.CELSIUS","VPD.KPA")]
+names(weather) <- c("TIMESTAMP","Radiation","AirTemp","VPD")
+unique(date(weather$TIMESTAMP))
+hist(weather$Radiation)
+hist(weather$AirTemp)
+hist(weather$VPD)
+#subset dates
+weather <- weather %>% mutate(Date = date(TIMESTAMP) ,Time=lubridate::hour(TIMESTAMP)+minute(TIMESTAMP)/60+second(TIMESTAMP)/3600)
+weather <- subset(weather,Date >= "2019-05-11" & Date <= "2019-09-04")
+sort(unique(weather$Date))
+
+a <- merge(gssb, weather, by = "TIMESTAMP")
+
+plot(a$AirTemp, a$PRIm, ylim = c(-0.2,0.2))
+plot(a$VPD, a$PRIm)
+
+plot(a$VPD, a$NDVIm)
+unique(a$Time)
+
+
+```
+##Daily average
+```{r}
+#daily average
+weather_daily_all <- aggregate(weather[,c('Radiation','AirTemp','VPD')], list("Date"= weather$Date), function(x){mean(x,na.rm = TRUE)})
+temp_df <- subset(weather, Time > 11 & Time < 15)
+weather_daily_noon <- aggregate(temp_df[,c('Radiation','AirTemp','VPD')], list("Date"= temp_df$Date), function(x){mean(x,na.rm = TRUE)})
+b <- merge(weather_daily_all, gs_daily, by = "Date")
+d <- merge(weather_daily_noon, gs_daily, by = "Date")
+
+ggplot(b, aes(x = VPD, y = PRI_NDVI_scale)) + geom_point(aes(color = ID)) + geom_smooth()
+ggplot(d, aes(x = VPD, y = PRI_NDVI_scale)) + geom_point(color = ID)
 
 ```
 
