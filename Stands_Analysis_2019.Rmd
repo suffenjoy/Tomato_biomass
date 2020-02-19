@@ -283,14 +283,46 @@ ggplot(gssb_filt, aes(x = Date, y = PRI0.ma, color = ID)) + geom_point() + scale
 ggplot(gssb_filt, aes(x = Date, y = PRI0, color = ID)) + geom_point() + scale_color_d3() + theme_bw() + ylab("PRI0")
 
 ```
-##Calculate PRIdelta in diurnal cycle
+###Calculate PRIdelta in diurnal cycle
 ```{r}
+gssb_filt <- gssb_filt %>% mutate(PRIdelta = PRIm - PRI0, PRIdelta.ma = PRIm.ma - PRI0.ma)
 
+
+
+
+p1 = ggplot(subset(gssb_filt, Date == "2019-05-31" & Time > 9 & Time < 18), aes(x = TIMESTAMP, y = PRIdelta.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRIdelta 2019-05-31") + scale_color_d3() + ylab("PRIdelta") + xlab("Time") + ylim(-0.125, 0.1) + theme_bw() + theme(legend.position = "none")
+p2 = ggplot(subset(gssb_filt, Date == "2019-06-12" & Time > 9 & Time < 18), aes(x = TIMESTAMP, y = PRIdelta.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRIdelta 2019-06-12") + scale_color_d3() + ylab("PRIdelta") + xlab("Time") + ylim(-0.125, 0.1) + theme_bw() + theme(legend.position = "none")
+p3 = ggplot(subset(gssb_filt, Date == "2019-06-26" & Time > 9 & Time < 18), aes(x = TIMESTAMP, y = PRIdelta.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRIdelta 2019-06-26") + scale_color_d3() + ylab("PRIdelta") + xlab("Time") + ylim(-0.125, 0.1)+ theme_bw() + theme(legend.position = "none")
+p4 = ggplot(subset(gssb_filt, Date == "2019-07-18" & Time > 9 & Time < 18), aes(x = TIMESTAMP, y = PRIdelta.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRIdelta 2019-07-18") + scale_color_d3() + ylab("PRIdelta") + xlab("Time") + ylim(-0.125, 0.1)+ theme_bw() + theme(legend.position = "none")
+p5 = ggplot(subset(gssb_filt, Date == "2019-07-26" & Time > 9 & Time < 18), aes(x = TIMESTAMP, y = PRIdelta.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRIdelta 2019-07-26") + scale_color_d3() + ylab("PRIdelta") + xlab("Time") + ylim(-0.125, 0.1)+ theme_bw() + theme(legend.position = "none")
+p6 = ggplot(subset(gssb_filt, Date == "2019-08-02" & Time > 9 & Time < 18), aes(x = TIMESTAMP, y = PRIdelta.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRIdelta 2019-08-02") + scale_color_d3() + ylab("PRIdelta") + xlab("Time") + ylim(-0.125, 0.1)+ theme_bw() + theme(legend.position = "none")
+p7 = ggplot(subset(gssb_filt, Date == "2019-08-09" & Time > 9 & Time < 18), aes(x = TIMESTAMP, y = PRIdelta.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRIdelta 2019-08-09") + scale_color_d3() + ylab("PRIdelta") + xlab("Time") + ylim(-0.125, 0.1)+ theme_bw() + theme(legend.position = "none")
+p8 = ggplot(subset(gssb_filt, Date == "2019-08-15" & Time > 9 & Time < 18), aes(x = TIMESTAMP, y = PRIdelta.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRIdelta 2019-08-15") + scale_color_d3() + ylab("PRIdelta") + xlab("Time") + ylim(-0.125, 0.1)+ theme_bw() + theme(legend.position = "none")
+grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8,nrow = 2, ncol =4) 
+
+#for legend
+p8 = ggplot(subset(gssb_filt, Date == "2019-08-15" & Time > 9 & Time < 18), aes(x = TIMESTAMP, y = PRIdelta.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRIdelta 2019-08-15") + scale_color_d3() + ylab("PRIdelta") + xlab("Time") + ylim(-0.125, 0.1)+ theme_bw()
+p8
 ```
 
 #Seasonal Change
 ##function to calculate daily average
 ```{r}
+DayAve <- function(data, early, late, begin, end, colnum, FUN){
+  #between certain dates
+  df_date <- date_selection(data, begin, end)
+  #noon average
+  df_date_noon <- noon_selection(df_date, early, late)
+  #split by date
+  df_split <- split(df_date_noon, df_date_noon$Date)
+  #lapply to calculate average
+  df_ave <- lapply(lapply(df_split, "[[", colnum), function(x){FUN(x, na.rm = TRUE)})
+  df_ave <- data.frame("Date" = ymd(names(df_ave)), "Value" = unlist(df_ave))
+  #result
+  row.names(df_ave) <- NULL
+  return(df_ave)
+}
+
 PRIm_dayave <- function(data, early, late, begin, end){
   #between certain dates
   PRIm_date <- date_selection(data, begin, end)
@@ -299,7 +331,7 @@ PRIm_dayave <- function(data, early, late, begin, end){
   #split
   PRIm_split <- split(PRIm_date_noon, PRIm_date_noon$Date)
   #lapply
-  PRIm_ave <- lapply(lapply(PRIm_split, "[[", 38), function(x){mean(x, na.rm = TRUE, trim = 0.2)})
+  PRIm_ave <- lapply(lapply(PRIm_split, "[[", 44), function(x){mean(x, na.rm = TRUE, trim = 0.2)})
   PRIm_ave <- data.frame("Date" = ymd(names(PRIm_ave)), "PRIm" = unlist(PRIm_ave))
   #result
   row.names(PRIm_ave) <- NULL
@@ -322,11 +354,47 @@ NDVIm_dayave <- function(data, early, late, begin, end){
 }
 ```
 
-##Calculate PRIm and PRIm daily average 
+##Calculate daily average
+###PRImin-PRI0 (follow Troy's paper)
 ```{r}
-temp_split <- split(gssb, gssb$ID)
+temp_split <- split(gssb_filt, gssb_filt$ID)
+names(temp_split[[1]]) #PRIm.ma 44, NDVIm 43, PRI0.ma 48, PRIdelta.ma 50
+
+#PRImin
+temp_ls <- lapply(temp_split, function(x){DayAve(x, 11, 15, "2019-05-11", "2019-09-04", 44, min)})
+for(i in 1:length(temp_ls)){
+  temp_ls[[i]]$ID = names(temp_ls)[i]
+}
+PRImin.ma_season <- do.call(rbind, temp_ls)
+row.names(PRImin.ma_season) <- NULL
+head(PRImin.ma_season)
+#is there any NAs
+sum(is.na(PRImin.ma_season$Value))
+names(PRImin.ma_season)[2] <- "PRImin.ma"
+
+#PRI0
+temp_ls <- lapply(temp_split, function(x){DayAve(x, 11, 15, "2019-05-11", "2019-09-04", 48, unique)})
+for(i in 1:length(temp_ls)){
+  temp_ls[[i]]$ID = names(temp_ls)[i]
+}
+PRI0.ma_season <- do.call(rbind, temp_ls)
+row.names(PRI0.ma_season) <- NULL
+head(PRI0.ma_season)
+sum(is.na(PRI0.ma_season$Value))
+names(PRI0.ma_season)[2] <- "PRI0.ma"
+
+#calculate PRIdelta
+PRIdelta.ma_season <- merge(PRImin.ma_season, PRI0.ma_season, by = c("Date","ID"))
+PRIdelta.ma_season <- PRIdelta.ma_season %>% mutate(PRImin_PRI0.ma = PRImin.ma - PRI0.ma)
+ggplot(PRIdelta.ma_season, aes(x = Date, y = PRImin_PRI0.ma, color = ID)) + geom_point()  + scale_color_d3() + theme_bw() + ylab("PRImin - PRI0") + ylim(c(-0.1, 0.025)) + ggtitle("Seasonal Change of PRImin - PRI0") + geom_smooth(se = FALSE)
+```
+
+```{r}
+temp_split <- split(gssb_filt, gssb_filt$ID)
+names(temp_split[[1]]) #PRIm.ma 44, NDVIm 43, PRI0.ma 48, PRIdelta.ma 50
 #PRIm daily average
-temp_ls <- lapply(temp_split, function(x){PRIm_dayave(x, 11, 15, "2019-05-07", "2019-09-05")})
+temp_ls <- lapply(temp_split, function(x){PRIm_dayave(x, 11, 15, "2019-05-11", "2019-09-04")})
+temp_ls2 <- lapply(temp_split, function(x){DayAve(x, 11, 15, "2019-05-11", "2019-09-04", 50)})
 for(i in 1:length(temp_ls)){
   temp_ls[[i]]$ID = names(temp_ls)[i]
 }
