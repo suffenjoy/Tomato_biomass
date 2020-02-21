@@ -355,7 +355,7 @@ NDVIm_dayave <- function(data, early, late, begin, end){
 ```
 
 ##Calculate daily average
-###PRImin-PRI0 (follow Troy's paper)
+###PRImin-PRI0 (follow Troy's paper) with moving average
 ```{r}
 temp_split <- split(gssb_filt, gssb_filt$ID)
 names(temp_split[[1]]) #PRIm.ma 44, NDVIm 43, PRI0.ma 48, PRIdelta.ma 50
@@ -384,52 +384,171 @@ sum(is.na(PRI0.ma_season$Value))
 names(PRI0.ma_season)[2] <- "PRI0.ma"
 
 #calculate PRIdelta
-PRIdelta.ma_season <- merge(PRImin.ma_season, PRI0.ma_season, by = c("Date","ID"))
-PRIdelta.ma_season <- PRIdelta.ma_season %>% mutate(PRImin_PRI0.ma = PRImin.ma - PRI0.ma)
-ggplot(PRIdelta.ma_season, aes(x = Date, y = PRImin_PRI0.ma, color = ID)) + geom_point()  + scale_color_d3() + theme_bw() + ylab("PRImin - PRI0") + ylim(c(-0.1, 0.025)) + ggtitle("Seasonal Change of PRImin - PRI0") + geom_smooth(se = FALSE)
+PRImin_0.ma_season <- merge(PRImin.ma_season, PRI0.ma_season, by = c("Date","ID"))
+PRImin_0.ma_season <- PRImin_0.ma_season %>% mutate(PRImin_PRI0.ma = PRImin.ma - PRI0.ma)
+ggplot(PRImin_0.ma_season, aes(x = Date, y = PRImin_PRI0.ma, color = ID)) + geom_point()  + scale_color_d3() + theme_bw() + ylab("PRImin - PRI0")  + ggtitle("Seasonal Change of PRImin - PRI0") + geom_smooth(se = FALSE)#+ ylim(c(-0.1, 0.025))
 ```
-
+###PRImin - PRI0 without moving average
 ```{r}
 temp_split <- split(gssb_filt, gssb_filt$ID)
-names(temp_split[[1]]) #PRIm.ma 44, NDVIm 43, PRI0.ma 48, PRIdelta.ma 50
-#PRIm daily average
-temp_ls <- lapply(temp_split, function(x){PRIm_dayave(x, 11, 15, "2019-05-11", "2019-09-04")})
-temp_ls2 <- lapply(temp_split, function(x){DayAve(x, 11, 15, "2019-05-11", "2019-09-04", 50)})
+names(temp_split[[1]]) #PRIm 42, PRIm.ma 44, NDVIm 43, PRI0 47, PRI0.ma 48, PRIdelta.ma 50
+
+#PRImin
+temp_ls <- lapply(temp_split, function(x){DayAve(x, 11, 15, "2019-05-11", "2019-09-04", 42, min)})
 for(i in 1:length(temp_ls)){
   temp_ls[[i]]$ID = names(temp_ls)[i]
 }
-PRIm_daily <- do.call(rbind, temp_ls)
-row.names(PRIm_daily) <- NULL
-ggplot(PRIm_daily, aes(x = Date, y = PRIm, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI")+ggtitle("PRI Seasonal Change")
+PRImin_season <- do.call(rbind, temp_ls)
+row.names(PRImin_season) <- NULL
+head(PRImin_season)
+#is there any NAs
+sum(is.na(PRImin_season$Value))
+names(PRImin_season)[2] <- "PRImin"
 
-
-#Seasonal Change of NDVI
-temp_ls <- lapply(temp_split, function(x){NDVIm_dayave(x, 11, 15, "2019-05-07", "2019-09-05")})
+#PRI0
+temp_ls <- lapply(temp_split, function(x){DayAve(x, 11, 15, "2019-05-11", "2019-09-04", 47, unique)})
 for(i in 1:length(temp_ls)){
   temp_ls[[i]]$ID = names(temp_ls)[i]
 }
-NDVIm_daily <- do.call(rbind, temp_ls)
-row.names(NDVIm_daily) <- NULL
-ggplot(NDVIm_daily, aes(x = Date, y = NDVIm, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("NDVI")+ggtitle("NDVI Seasonal Change")
+PRI0_season <- do.call(rbind, temp_ls)
+row.names(PRI0_season) <- NULL
+head(PRI0_season)
+sum(is.na(PRI0_season$Value))
+names(PRI0_season)[2] <- "PRI0"
 
-#merge daily NDVI and daily PRI
-gs_daily <- merge(PRIm_daily, NDVIm_daily, by = c("Date","ID"))
-#add block name
-gs_daily$BLOCK <- sapply(strsplit(gs_daily$ID, split = " "),'[',1)
+#calculate PRIdelta
+PRImin_0_season <- merge(PRImin_season, PRI0_season, by = c("Date","ID"))
+PRImin_0_season <- PRImin_0_season %>% mutate(PRImin_PRI0 = PRImin - PRI0)
+ggplot(PRImin_0_season, aes(x = Date, y = PRImin_PRI0, color = ID)) + geom_point()  + scale_color_d3() + theme_bw() + ylab("PRImin - PRI0")  + ggtitle("Seasonal Change of PRImin - PRI0")+ylim(-0.15, 0.025) #+ geom_smooth(se = FALSE)+ ylim(c(-0.1, 0.025))
 
-#Divide into different blocks
-##PRI
-p1 = ggplot(subset(gs_daily, BLOCK == 2), aes(x = Date, y = PRIm, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI")+ggtitle("PRI Seasonal Change Block 2") + ylim(-0.1, 0.04)
-p2 = ggplot(subset(gs_daily, BLOCK == 4), aes(x = Date, y = PRIm, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI")+ggtitle("PRI Seasonal Change Block 4")+ ylim(-0.1, 0.04)
-p3 = ggplot(subset(gs_daily, BLOCK == 5), aes(x = Date, y = PRIm, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI")+ggtitle("PRI Seasonal Change Block 5")+ ylim(-0.1, 0.04)
-grid.arrange(p1,p2,p3,nrow=3)
-##NDVI
-p1 = ggplot(subset(gs_daily, BLOCK == 2), aes(x = Date, y = NDVIm, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("NDVI")+ggtitle("NDVI Seasonal Change Block 2")
-p2 = ggplot(subset(gs_daily, BLOCK == 4), aes(x = Date, y = NDVIm, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("NDVI")+ggtitle("NDVI Seasonal Change Block 4")
-p3 = ggplot(subset(gs_daily, BLOCK == 5), aes(x = Date, y = NDVIm, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("NDVI")+ggtitle("NDVI Seasonal Change Block 5")
-grid.arrange(p1,p2,p3,nrow=3)
 ```
-##Corrected PRI
+###PRIdelta average with moving average
+```{r}
+temp_split <- split(gssb_filt, gssb_filt$ID)
+names(temp_split[[1]]) #PRIm 42, PRIm.ma 44, NDVIm 43, PRI0 47, PRI0.ma 48, PRIdelta 49, PRIdelta.ma 50
+
+#PRIdelta.ma
+temp_ls <- lapply(temp_split, function(x){DayAve(x, 11, 15, "2019-05-11", "2019-09-04", 50, mean)})
+for(i in 1:length(temp_ls)){
+  temp_ls[[i]]$ID = names(temp_ls)[i]
+}
+PRIdelta.ma_season <- do.call(rbind, temp_ls)
+row.names(PRIdelta.ma_season) <- NULL
+head(PRIdelta.ma_season)
+#is there any NAs
+sum(is.na(PRIdelta.ma_season$Value))
+names(PRIdelta.ma_season)[2] <- "PRIdelta.ma"
+
+ggplot(PRIdelta.ma_season, aes(x = Date, y = PRIdelta.ma, color = ID)) + geom_point() + scale_color_d3() + theme_bw() + ylab("PRIdelta") + ggtitle("Seasonal Change of PRIdelta") + geom_smooth(se = FALSE)
+
+```
+###PRIdelta average without moving average
+```{r}
+#PRIdelta
+temp_ls <- lapply(temp_split, function(x){DayAve(x, 11, 15, "2019-05-11", "2019-09-04", 49, mean)})
+for(i in 1:length(temp_ls)){
+  temp_ls[[i]]$ID = names(temp_ls)[i]
+}
+PRIdelta_season <- do.call(rbind, temp_ls)
+row.names(PRIdelta_season) <- NULL
+head(PRIdelta_season)
+sum(is.na(PRIdelta_season$Value))
+names(PRIdelta_season)[2] <- "PRIdelta"
+
+ggplot(PRIdelta_season, aes(x = Date, y = PRIdelta, color = ID)) + geom_point() + scale_color_d3() + theme_bw() + ylab("PRIdelta") + ggtitle("Seasonal Change of PRIdelta")
+
+```
+###PRIm, PRIm.ma, NDVI
+```{r}
+temp_split <- split(gssb_filt, gssb_filt$ID)
+names(temp_split[[1]]) #PRIm 42, PRIm.ma 44, NDVIm 43, PRI0 47, PRI0.ma 48, PRIdelta 49, PRIdelta.ma 50
+
+
+#PRIm 42
+temp_ls <- lapply(temp_split, function(x){DayAve(x, 11, 15, "2019-05-11", "2019-09-04", 42, mean)})
+for(i in 1:length(temp_ls)){
+  temp_ls[[i]]$ID = names(temp_ls)[i]
+}
+PRIm_season <- do.call(rbind, temp_ls)
+row.names(PRIm_season) <- NULL
+head(PRIm_season)
+#is there any NAs
+sum(is.na(PRIm_season$Value))
+names(PRIm_season)[2] <- "PRIm"
+ggplot(PRIm_season, aes(x = Date, y = PRIm, color = ID)) + geom_point() + scale_color_d3() + theme_bw() + ylab("PRI") + ggtitle("Seasonal Change of PRI") + geom_smooth(se = FALSE)
+
+
+
+#PRIm.ma 44
+temp_ls <- lapply(temp_split, function(x){DayAve(x, 11, 15, "2019-05-11", "2019-09-04", 44, mean)})
+for(i in 1:length(temp_ls)){
+  temp_ls[[i]]$ID = names(temp_ls)[i]
+}
+PRIm.ma_season <- do.call(rbind, temp_ls)
+row.names(PRIm.ma_season) <- NULL
+head(PRIm.ma_season)
+#is there any NAs
+sum(is.na(PRIm.ma_season$Value))
+names(PRIm.ma_season)[2] <- "PRIm.ma"
+ggplot(PRIm.ma_season, aes(x = Date, y = PRIm.ma, color = ID)) + geom_point() + scale_color_d3() + theme_bw() + ylab("PRI") + ggtitle("Seasonal Change of PRI") + geom_smooth(se = FALSE)
+
+#NDVIm 43
+temp_ls <- lapply(temp_split, function(x){DayAve(x, 11, 15, "2019-05-11", "2019-09-04", 43, mean)})
+for(i in 1:length(temp_ls)){
+  temp_ls[[i]]$ID = names(temp_ls)[i]
+}
+NDVIm_season <- do.call(rbind, temp_ls)
+row.names(NDVIm_season) <- NULL
+head(NDVIm_season)
+#is there any NAs
+sum(is.na(NDVIm_season$Value))
+names(NDVIm_season)[2] <- "NDVIm"
+ggplot(NDVIm_season, aes(x = Date, y = NDVIm, color = ID)) + geom_point() + scale_color_d3() + theme_bw() + ylab("NDVI") + ggtitle("Seasonal Change of NDVI") + geom_smooth(se = FALSE)
+
+
+```
+###Merge all seasonal change df together
+```{r}
+df_season <- merge(PRImin_0.ma_season, PRImin_0_season, by = c("ID","Date"))
+dim(df_season)
+dim(PRImin_0_season)
+head(df_season)
+
+df_season <- merge(df_season, PRIdelta_season, by = c("ID","Date"))
+df_season <- merge(df_season, PRIdelta.ma_season, by = c("ID","Date"))
+df_season <- merge(df_season, PRIm_season, by = c("ID","Date"))
+dim(PRIm_season)
+df_season <- merge(df_season, PRIm.ma_season, by =  c("ID","Date"))
+df_season <- merge(df_season, NDVIm_season, by = c("ID","Date"))
+head(df_season)
+
+```
+###PRI and NDVI combined
+####PRI/NDVI ratio 
+```{r}
+names(df_season)
+df_season <- df_season %>% mutate(PRI.NDVI = PRIm/NDVIm, 
+                                  PRI.NDVI.ma = PRIm.ma/NDVIm, 
+                                  PRI_scale = (PRIm - min(PRIm, na.rm = TRUE))/(max(PRIm, na.rm = TRUE) - min(PRIm, na.rm = TRUE)), 
+                                  NDVI_scale = (NDVIm - min(NDVIm, na.rm = TRUE))/(max(NDVIm, na.rm = TRUE) - min(NDVIm, na.rm = TRUE)),
+                                  PRI.ma_scale = (PRIm.ma - min(PRIm.ma, na.rm = TRUE))/(max(PRIm.ma, na.rm = TRUE) - min(PRIm.ma, na.rm = TRUE)),
+                                  PRI_NDVI_scale = PRI_scale - NDVI_scale, 
+                                  PRI_NDVI.ma_scale = PRI.ma_scale - NDVI_scale,
+                                  PRI.NDVI = PRI_scale/NDVI_scale,
+                                  PRI.NDVI.ma = PRI.ma_scale/NDVI_scale, 
+                                  PRI.NDVI_scale  = PRI_scale/NDVI_scale, 
+                                  PRI.NDVI.ma_scale = PRI.ma_scale/NDVI_scale)
+```
+####PRIscale-NDVIscale
+```{r}
+
+#gs_daily <- gs_daily %>% mutate(PRI_scale = PRIm-min(PRIm, na.rm = TRUE)/(max(PRIm, na.rm = TRUE) - min(PRIm, na.rm = TRUE)),
+                                NDVI_scale = NDVIm-min(NDVIm, na.rm = TRUE)/(max(NDVIm, na.rm = TRUE) - min(NDVIm, na.rm = TRUE)),
+                                PRI_NDVI_scale = PRI_scale - NDVI_scale)
+
+```
+
+
 ###PRI/NDVI
 ```{r}
 gs_daily <- gs_daily %>% mutate(PRI.NDVI = PRIm/NDVIm)
@@ -514,4 +633,34 @@ uav_pri_062819 <- extract()
 
 ```
 
+#---------------------------------------------------------#
+#Not Useful at present, delete later
+```{r}
+
+#Seasonal Change of NDVI
+temp_ls <- lapply(temp_split, function(x){NDVIm_dayave(x, 11, 15, "2019-05-07", "2019-09-05")})
+for(i in 1:length(temp_ls)){
+  temp_ls[[i]]$ID = names(temp_ls)[i]
+}
+NDVIm_daily <- do.call(rbind, temp_ls)
+row.names(NDVIm_daily) <- NULL
+ggplot(NDVIm_daily, aes(x = Date, y = NDVIm, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("NDVI")+ggtitle("NDVI Seasonal Change")
+
+#merge daily NDVI and daily PRI
+gs_daily <- merge(PRIm_daily, NDVIm_daily, by = c("Date","ID"))
+#add block name
+gs_daily$BLOCK <- sapply(strsplit(gs_daily$ID, split = " "),'[',1)
+
+#Divide into different blocks
+##PRI
+p1 = ggplot(subset(gs_daily, BLOCK == 2), aes(x = Date, y = PRIm, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI")+ggtitle("PRI Seasonal Change Block 2") + ylim(-0.1, 0.04)
+p2 = ggplot(subset(gs_daily, BLOCK == 4), aes(x = Date, y = PRIm, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI")+ggtitle("PRI Seasonal Change Block 4")+ ylim(-0.1, 0.04)
+p3 = ggplot(subset(gs_daily, BLOCK == 5), aes(x = Date, y = PRIm, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI")+ggtitle("PRI Seasonal Change Block 5")+ ylim(-0.1, 0.04)
+grid.arrange(p1,p2,p3,nrow=3)
+##NDVI
+p1 = ggplot(subset(gs_daily, BLOCK == 2), aes(x = Date, y = NDVIm, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("NDVI")+ggtitle("NDVI Seasonal Change Block 2")
+p2 = ggplot(subset(gs_daily, BLOCK == 4), aes(x = Date, y = NDVIm, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("NDVI")+ggtitle("NDVI Seasonal Change Block 4")
+p3 = ggplot(subset(gs_daily, BLOCK == 5), aes(x = Date, y = NDVIm, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("NDVI")+ggtitle("NDVI Seasonal Change Block 5")
+grid.arrange(p1,p2,p3,nrow=3)
+```
 
