@@ -7,6 +7,8 @@ output: html_document
 
 #Package
 ```{r}
+library(corrplot)
+library(RColorBrewer)
 library(ggplot2)
 library(ggsci)
 library(ggthemes)
@@ -117,6 +119,11 @@ weather_daily_all <- aggregate(weather[,c('Radiation','AirTemp','VPD')], list("D
 #from 11:00-15:00
 temp_df <- subset(weather, Time > 11 & Time < 15)
 weather_daily_noon <- aggregate(temp_df[,c('Radiation','AirTemp','VPD')], list("Date"= temp_df$Date), function(x){mean(x,na.rm = TRUE)})
+
+#combine them together with different names
+weather_season <- merge(weather_daily_all, weather_daily_noon, by = "Date")
+head(weather_season)
+names(weather_season) <- c("Date","Radiation.all","AirTemp.all","VPD.all","Radiation.noon","AirTemp.noon","VPD.noon")
 ```
 
 
@@ -524,7 +531,6 @@ head(df_season)
 
 ```
 ###PRI and NDVI combined
-####PRI/NDVI ratio 
 ```{r}
 names(df_season)
 df_season <- df_season %>% mutate(PRI.NDVI = PRIm/NDVIm, 
@@ -539,48 +545,88 @@ df_season <- df_season %>% mutate(PRI.NDVI = PRIm/NDVIm,
                                   PRI.NDVI_scale  = PRI_scale/NDVI_scale, 
                                   PRI.NDVI.ma_scale = PRI.ma_scale/NDVI_scale)
 ```
-####PRIscale-NDVIscale
-```{r}
-
-#gs_daily <- gs_daily %>% mutate(PRI_scale = PRIm-min(PRIm, na.rm = TRUE)/(max(PRIm, na.rm = TRUE) - min(PRIm, na.rm = TRUE)),
-                                NDVI_scale = NDVIm-min(NDVIm, na.rm = TRUE)/(max(NDVIm, na.rm = TRUE) - min(NDVIm, na.rm = TRUE)),
-                                PRI_NDVI_scale = PRI_scale - NDVI_scale)
-
-```
 
 
-###PRI/NDVI
-```{r}
-gs_daily <- gs_daily %>% mutate(PRI.NDVI = PRIm/NDVIm)
 
-##Plot
-p1 = ggplot(subset(gs_daily, BLOCK == 2), aes(x = Date, y = PRI.NDVI, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI/NDVI")+ggtitle("PRI/NDVI Seasonal Change Block 2")
-p2 = ggplot(subset(gs_daily, BLOCK == 4), aes(x = Date, y = PRI.NDVI, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI/NDVI")+ggtitle("PRI/NDVI Seasonal Change Block 4")
-p3 = ggplot(subset(gs_daily, BLOCK == 5), aes(x = Date, y = PRI.NDVI, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI/NDVI")+ggtitle("PRI/NDVINDVI Seasonal Change Block 5")
-grid.arrange(p1,p2,p3,nrow=3)
-
-##Subset after June
-p1 = ggplot(subset(gs_daily, BLOCK == 2 & Date >= "2019-05-31"), aes(x = Date, y = PRI.NDVI, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI/NDVI")+ggtitle("PRI/NDVI Seasonal Change Block 2")
-p2 = ggplot(subset(gs_daily, BLOCK == 4 & Date >= "2019-05-31"), aes(x = Date, y = PRI.NDVI, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI/NDVI")+ggtitle("PRI/NDVI Seasonal Change Block 4")
-p3 = ggplot(subset(gs_daily, BLOCK == 5 & Date >= "2019-05-31"), aes(x = Date, y = PRI.NDVI, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI/NDVI")+ggtitle("PRI/NDVINDVI Seasonal Change Block 5")
-grid.arrange(p1,p2,p3,nrow=3)
-
-```
-###PRIscale-NDVIscale
-```{r}
-#scale both PRI and NDVI to (0,1) range
-gs_daily <- gs_daily %>% mutate(PRI_scale = PRIm-min(PRIm, na.rm = TRUE)/(max(PRIm, na.rm = TRUE) - min(PRIm, na.rm = TRUE)),
-                                NDVI_scale = NDVIm-min(NDVIm, na.rm = TRUE)/(max(NDVIm, na.rm = TRUE) - min(NDVIm, na.rm = TRUE)),
-                                PRI_NDVI_scale = PRI_scale - NDVI_scale)
-
-p1 = ggplot(subset(gs_daily, BLOCK == 2 & Date >= "2019-05-31"), aes(x = Date, y = PRI_NDVI_scale, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRIsc-NDVIsc")+ggtitle("PRI-NDVI Seasonal Change Block 2")
-p2 = ggplot(subset(gs_daily, BLOCK == 4 & Date >= "2019-05-31"), aes(x = Date, y = PRI_NDVI_scale, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRIsc-NDVIsc")+ggtitle("PRI-NDVI Seasonal Change Block 4")
-p3 = ggplot(subset(gs_daily, BLOCK == 5 & Date >= "2019-05-31"), aes(x = Date, y = PRI_NDVI_scale, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRIsc-NDVIsc")+ggtitle("PRI-NDVINDVI Seasonal Change Block 5")
-grid.arrange(p1,p2,p3,nrow=3)
-
-
-```
 #Include physiology measurement
+##Read data
+```{r}
+path_phys <- "C:/Users/zt92/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/Physiology"
+SWP_BA <- read_excel(file.path(path_phys, "SWP_2019_BlockAve.xlsx"))
+NPQ_BA <- read_excel(file.path(path_phys, "NPQ_2019_BlockAve.xlsx"))
+LICOR_BA <- read_excel(file.path(path_phys, "LICOR_2019_BlockAve.xlsx"))
+FAPAR_BA <- read_excel(file.path(path_phys, "FAPAR_2019_BlockAve.xlsx"))
+CHL_BA <- read_excel(file.path(path_phys, "CHL_2019_BlockAve.xlsx"))
+
+#merge them together
+phys_BA <- merge(SWP_BA, LICOR_BA, by = c("Date","BLOCK","PLOT","TREATMENT"))
+phys_BA <- merge(phys_BA, FAPAR_BA, by = c("Date","BLOCK","PLOT","TREATMENT"))
+phys_BA <- merge(phys_BA, CHL_BA, by = c("Date","BLOCK","PLOT","TREATMENT"))
+phys_BA <- merge(phys_BA, NPQ_BA, by = c("Date","BLOCK","PLOT","TREATMENT"))
+head(phys_BA)
+dim(phys_BA)
+str(phys_BA)
+
+#change format
+phys_BA$Date <- as.Date(phys_BA$Date)
+phys_BA$BLOCK <- as.factor(phys_BA$BLOCK)
+phys_BA$PLOT <- as.factor(phys_BA$PLOT)
+phys_BA$TREATMENT <- as.factor(phys_BA$TREATMENT)
+
+#add ID column
+phys_BA$ID <- paste(phys_BA$BLOCK, phys_BA$TREATMENT, sep = " ")
+
+
+```
+##Combine with PRI data and weather data
+```{r}
+head(df_season)
+head(phys_BA)
+dim(df_season) #936,22
+dim(phys_BA) #140, 12
+
+
+unique(phys_BA$ID)
+#trim the space
+unique(df_season$ID)
+df_season$ID <- trimws(df_season$ID, which = "right")
+
+#merge together
+df_PRI_phys <- merge(df_season, phys_BA, by = c("Date","ID"))
+dim(df_PRI_phys)
+unique(df_PRI_phys)
+
+#merge with weather
+df_PRI_weather <- merge(df_season, weather_season, by = c("Date"))
+dim(df_PRI_weather)
+dim(df_season)
+
+#merge all together
+phys_weather_PRI <- merge(df_PRI_phys, weather_season, by = c("Date"))
+dim(phys_weather_PRI)
+dim(df_PRI_phys)
+```
+##Plots
+```{r}
+#correlations
+names(phys_weather_PRI)
+str(phys_weather_PRI)
+a <- cor(phys_weather_PRI[,-c(1,2,23,24,25)])
+corrplot(a, type ="upper",  col = brewer.pal(n =8, name = "RdYlBu"))
+ggplot()
+
+ggplot(subset(gs_daily_swp, Date != "2019-05-31"), aes(x = Date, y = PRI_NDVI_scale, color = ID)) + geom_point() + scale_color_d3()
+ggplot(subset(gs_daily_swp, Date != "2019-05-31"), aes(x = Date, y = -SWP, color = ID)) + geom_point() + scale_color_d3()
+
+ggplot(subset(gs_daily_swp, Date != "2019-05-31"), aes(y = -SWP, x = PRI_NDVI_scale)) + geom_point(aes(color = as.factor(Date))) + scale_color_d3() + geom_smooth(method = "lm") + ylab("Stem Water Potential (Bars)") + xlab("PRIsc-NDVIsc")
+
+
+lm1 <- lm(-SWP~PRI_NDVI_scale, subset(gs_daily_swp, Date != "2019-05-31"))
+summary(lm1)
+cor(subset(gs_daily_swp, Date != "2019-05-31")$PRI_NDVI_scale, subset(gs_daily_swp, Date != "2019-05-31")$SWP)^2
+
+```
+
 ##SWP
 ```{r}
 path_phys <- "C:/Users/zt92/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/Physiology"
@@ -663,4 +709,34 @@ p2 = ggplot(subset(gs_daily, BLOCK == 4), aes(x = Date, y = NDVIm, color = ID)) 
 p3 = ggplot(subset(gs_daily, BLOCK == 5), aes(x = Date, y = NDVIm, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("NDVI")+ggtitle("NDVI Seasonal Change Block 5")
 grid.arrange(p1,p2,p3,nrow=3)
 ```
+###PRI/NDVI
+```{r}
+gs_daily <- gs_daily %>% mutate(PRI.NDVI = PRIm/NDVIm)
 
+##Plot
+p1 = ggplot(subset(gs_daily, BLOCK == 2), aes(x = Date, y = PRI.NDVI, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI/NDVI")+ggtitle("PRI/NDVI Seasonal Change Block 2")
+p2 = ggplot(subset(gs_daily, BLOCK == 4), aes(x = Date, y = PRI.NDVI, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI/NDVI")+ggtitle("PRI/NDVI Seasonal Change Block 4")
+p3 = ggplot(subset(gs_daily, BLOCK == 5), aes(x = Date, y = PRI.NDVI, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI/NDVI")+ggtitle("PRI/NDVINDVI Seasonal Change Block 5")
+grid.arrange(p1,p2,p3,nrow=3)
+
+##Subset after June
+p1 = ggplot(subset(gs_daily, BLOCK == 2 & Date >= "2019-05-31"), aes(x = Date, y = PRI.NDVI, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI/NDVI")+ggtitle("PRI/NDVI Seasonal Change Block 2")
+p2 = ggplot(subset(gs_daily, BLOCK == 4 & Date >= "2019-05-31"), aes(x = Date, y = PRI.NDVI, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI/NDVI")+ggtitle("PRI/NDVI Seasonal Change Block 4")
+p3 = ggplot(subset(gs_daily, BLOCK == 5 & Date >= "2019-05-31"), aes(x = Date, y = PRI.NDVI, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRI/NDVI")+ggtitle("PRI/NDVINDVI Seasonal Change Block 5")
+grid.arrange(p1,p2,p3,nrow=3)
+
+```
+###PRIscale-NDVIscale
+```{r}
+#scale both PRI and NDVI to (0,1) range
+gs_daily <- gs_daily %>% mutate(PRI_scale = PRIm-min(PRIm, na.rm = TRUE)/(max(PRIm, na.rm = TRUE) - min(PRIm, na.rm = TRUE)),
+                                NDVI_scale = NDVIm-min(NDVIm, na.rm = TRUE)/(max(NDVIm, na.rm = TRUE) - min(NDVIm, na.rm = TRUE)),
+                                PRI_NDVI_scale = PRI_scale - NDVI_scale)
+
+p1 = ggplot(subset(gs_daily, BLOCK == 2 & Date >= "2019-05-31"), aes(x = Date, y = PRI_NDVI_scale, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRIsc-NDVIsc")+ggtitle("PRI-NDVI Seasonal Change Block 2")
+p2 = ggplot(subset(gs_daily, BLOCK == 4 & Date >= "2019-05-31"), aes(x = Date, y = PRI_NDVI_scale, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRIsc-NDVIsc")+ggtitle("PRI-NDVI Seasonal Change Block 4")
+p3 = ggplot(subset(gs_daily, BLOCK == 5 & Date >= "2019-05-31"), aes(x = Date, y = PRI_NDVI_scale, color = ID)) + geom_line(size = 1) + scale_color_d3()+ylab("PRIsc-NDVIsc")+ggtitle("PRI-NDVINDVI Seasonal Change Block 5")
+grid.arrange(p1,p2,p3,nrow=3)
+
+
+```
