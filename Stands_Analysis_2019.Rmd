@@ -8,6 +8,8 @@ output: html_document
 #Package
 ```{r}
 library(corrplot)
+library(Hmisc)
+library(PerformanceAnalytics)
 library(RColorBrewer)
 library(ggplot2)
 library(ggsci)
@@ -606,6 +608,14 @@ phys_weather_PRI <- merge(df_PRI_phys, weather_season, by = c("Date"))
 dim(phys_weather_PRI)
 dim(df_PRI_phys)
 ```
+##Correlation analysis
+```{r}
+res <- rcorr(as.matrix(phys_weather_PRI[,-c(1,2,23,24,25)]))
+res
+chart.Correlation(phys_weather_PRI[,-c(1,2,23,24,25)], histogram = FALSE, pch = 19)
+
+```
+
 ##Plots
 ```{r}
 #correlations
@@ -613,7 +623,11 @@ names(phys_weather_PRI)
 str(phys_weather_PRI)
 a <- cor(phys_weather_PRI[,-c(1,2,23,24,25)])
 corrplot(a, type ="upper",  col = brewer.pal(n =8, name = "RdYlBu"))
-ggplot()
+ggplot(phys_weather_PRI, aes(x = PRI_NDVI_scale, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+scale_color_d3() + geom_smooth(method = "lm") + ylab("Stem Water Potential (Bars)") + xlab("PRIsc-NDVIsc") + theme_bw()
+
+
+plot()
+
 
 ggplot(subset(gs_daily_swp, Date != "2019-05-31"), aes(x = Date, y = PRI_NDVI_scale, color = ID)) + geom_point() + scale_color_d3()
 ggplot(subset(gs_daily_swp, Date != "2019-05-31"), aes(x = Date, y = -SWP, color = ID)) + geom_point() + scale_color_d3()
