@@ -172,6 +172,33 @@ head(temp_agg)
 ggplot(IR_sd, aes(x = TIMESTAMP, y = sd, color = wavelength))+geom_point() + scale_color_d3()
 ggplot(noon_selection(IR_sd, 8, 18), aes(x = TIMESTAMP, y = sd, color = wavelength)) + geom_point() +scale_color_d3() + ylab("Standard Deviation") + xlab("Date")
 ```
+##Check the upward radiation
+```{r}
+#X532OUT
+ggplot(subset(gs, Date == "2019-06-01"), aes(x = TIMESTAMP, y = X532OUT, color = as.factor(ID))) + geom_point() + ggtitle("Incoming Radiation In532 2019-06-01") + scale_color_d3()
+ggplot(subset(gs, Date == "2019-07-01"), aes(x = TIMESTAMP, y = X532OUT, color = as.factor(ID))) + geom_point() + ggtitle("Incoming Radiation In532 2019-07-01") + scale_color_d3()
+ggplot(subset(gs, Date == "2019-08-01"), aes(x = TIMESTAMP, y = X532OUT, color = as.factor(ID))) + geom_point() + ggtitle("Incoming Radiation In532 2019-08-01") + scale_color_d3()
+ggplot(subset(gs, Date == "2019-09-01"), aes(x = TIMESTAMP, y = X532OUT, color = as.factor(ID))) + geom_point() + ggtitle("Incoming Radiation In532 2019-09-01") + scale_color_d3()
+
+#X570OUT
+ggplot(subset(gs, Date == "2019-06-01"), aes(x = TIMESTAMP, y = X570OUT, color = as.factor(ID))) + geom_point() + ggtitle("Incoming Radiation In570 2019-06-01") + scale_color_d3()
+ggplot(subset(gs, Date == "2019-07-01"), aes(x = TIMESTAMP, y = X570OUT, color = as.factor(ID))) + geom_point() + ggtitle("Incoming Radiation In570 2019-07-01") + scale_color_d3()
+ggplot(subset(gs, Date == "2019-08-01"), aes(x = TIMESTAMP, y = X570OUT, color = as.factor(ID))) + geom_point() + ggtitle("Incoming Radiation In570 2019-08-01") + scale_color_d3()
+ggplot(subset(gs, Date == "2019-09-01"), aes(x = TIMESTAMP, y = X570OUT, color = as.factor(ID))) + geom_point() + ggtitle("Incoming Radiation In570 2019-09-01") + scale_color_d3()
+
+#X650OUT
+ggplot(subset(gs, Date == "2019-06-01"), aes(x = TIMESTAMP, y = X650OUT, color = as.factor(ID))) + geom_point() + ggtitle("Incoming Radiation In650 2019-06-01") + scale_color_d3()
+ggplot(subset(gs, Date == "2019-07-01"), aes(x = TIMESTAMP, y = X650OUT, color = as.factor(ID))) + geom_point() + ggtitle("Incoming Radiation In650 2019-07-01") + scale_color_d3()
+ggplot(subset(gs, Date == "2019-08-01"), aes(x = TIMESTAMP, y = X650OUT, color = as.factor(ID))) + geom_point() + ggtitle("Incoming Radiation In650 2019-08-01") + scale_color_d3()
+ggplot(subset(gs, Date == "2019-09-01"), aes(x = TIMESTAMP, y = X650OUT, color = as.factor(ID))) + geom_point() + ggtitle("Incoming Radiation In650 2019-09-01") + scale_color_d3()
+
+#X810OUT
+ggplot(subset(gs, Date == "2019-06-01"), aes(x = TIMESTAMP, y = X810OUT, color = as.factor(ID))) + geom_point() + ggtitle("Incoming Radiation In810 2019-06-01") + scale_color_d3()
+ggplot(subset(gs, Date == "2019-07-01"), aes(x = TIMESTAMP, y = X810OUT, color = as.factor(ID))) + geom_point() + ggtitle("Incoming Radiation In810 2019-07-01") + scale_color_d3()
+ggplot(subset(gs, Date == "2019-08-01"), aes(x = TIMESTAMP, y = X810OUT, color = as.factor(ID))) + geom_point() + ggtitle("Incoming Radiation In810 2019-08-01") + scale_color_d3()
+ggplot(subset(gs, Date == "2019-09-01"), aes(x = TIMESTAMP, y = X810OUT, color = as.factor(ID))) + geom_point() + ggtitle("Incoming Radiation In810 2019-09-01") + scale_color_d3()
+
+```
 
 ##Average the incoming radiation 
 ```{r}
@@ -195,12 +222,13 @@ gssb <- gssb %>% mutate(R532m = X532OUT/X532IN_mean,
 
 ##Deal with missing values 
 ```{r}
-gssb <- subset(gssb, ID != "5 CONTROL DDD  " & ID!= "10 CIMIS  ")
+gssb <- subset(gssb, ID!= "10 CIMIS  ")
+#gssb <- subset(gssb, ID != "5 CONTROL DDD  " & ID!= "10 CIMIS  ")
 gssb <- subset(gssb, Date >= "2019-05-11" & Date <= "2019-09-04")
 unique(gssb$ID)
 names(gssb)
 
-sum(is.na(gssb$PRIm)) #13 NAs
+sum(is.na(gssb$PRIm)) #13 NAs 
 sum(is.na(gssb$NDVIm)) #6 NAs
 sum(is.na(gssb$TIMESTAMP))
 
@@ -217,12 +245,39 @@ gssb <- do.call(rbind, ma_split)
 
 ##Visualize the diurnal cycle of PRI 
 ```{r}
-
+#For the dates that have ground measurements 
 #PRIm from 7:00 to 20:00
-ggplot(subset(gssb, Date == "2019-06-01" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-06-01") + scale_color_d3() + ylab("PRI") + xlab("Time")
-ggplot(subset(gssb, Date == "2019-07-01" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-07-01") + scale_color_d3() + ylab("PRI") + xlab("Time")
-ggplot(subset(gssb, Date == "2019-08-01" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-01") + scale_color_d3() + ylab("PRI") + xlab("Time")
-ggplot(subset(gssb, Date == "2019-09-01" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-09-01") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(a, Date == "2019-05-30" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-05-30") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-05-31" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-05-31") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-06-01" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-06-01") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-06-10" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-06-10") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-06-11" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-06-11") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-06-12" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-06-12") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-06-25" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-06-25") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-06-26" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-06-26") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-06-27" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-06-27") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-07-17" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-07-17") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-07-18" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-07-18") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-07-19" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-07-19") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-07-25" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-07-25") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-07-26" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-07-26") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-07-27" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-07-27") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-08-01" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-01") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-08-02" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-02") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-08-03" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-03") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-08-08" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-08") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-08-09" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-09") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-08-10" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-10") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-08-14" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-14") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-08-15" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-15") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+ggplot(subset(a, Date == "2019-08-16" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-16") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None')
+
+
+
+
+
+
+
 
 
 ggplot(subset(gssb, Date == "2019-09-01" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-09-01") + scale_color_d3() + ylab("PRI") + xlab("Time")
@@ -243,6 +298,36 @@ ggplot(subset(gssb, Date == "2019-08-15" & Time > 9 & Time < 18), aes(x = TIMEST
 
 
 ```
+##How about PRIm.ma
+```{r}
+#For the dates that have ground measurements 
+#PRIm from 7:00 to 20:00
+ggplot(subset(gssb, Date == "2019-05-30" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-05-30") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-05-31" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-05-31") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-06-01" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-06-01") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-06-10" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-06-10") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-06-11" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-06-11") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-06-12" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-06-12") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-06-25" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-06-25") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-06-26" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-06-26") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-06-27" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-06-27") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-07-17" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-07-17") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-07-18" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-07-18") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-07-19" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-07-19") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-07-25" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-07-25") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-07-26" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-07-26") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-07-27" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-07-27") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-08-01" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-01") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-08-02" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-02") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-08-03" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-03") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-08-08" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-08") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-08-09" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-09") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-08-10" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-10") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-08-14" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-14") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-08-15" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-15") + scale_color_d3() + ylab("PRI") + xlab("Time")
+ggplot(subset(gssb, Date == "2019-08-13" & Time > 7 & Time < 19), aes(x = TIMESTAMP, y = PRIm.ma, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-08-13") + scale_color_d3() + ylab("PRI") + xlab("Time")
+```
+
 ##How about NDVI
 ```{r}
 #NDVIm from 9:00 to 18:00, choose the date that have ground measurements
@@ -257,7 +342,160 @@ p8 = ggplot(subset(gssb, Date == "2019-08-15" & Time > 9 & Time < 18), aes(x = T
 grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8,nrow = 2, ncol =4) 
 
 ```
+
 ##Calculate PRI0
+###Local minimum and maximum 
+####Function 
+```{r}
+which.peaks <- function(x,partial=TRUE,decreasing=FALSE){
+  if (decreasing){
+    if (partial){
+      which(diff(c(TRUE,diff(x)<=0,FALSE))>0)
+    }else {
+      which(diff(diff(x)<=0)>0)
+    }    
+  }else {
+    if (partial){
+      which(diff(c(TRUE,diff(x)>=0,FALSE))<0)
+    }else {
+      which(diff(diff(x)>=0)<0)
+    }
+    
+  }
+}
+
+ts_max<-function(signal)  
+{
+  points_max=which(diff(sign(diff(signal)))==-2)+1
+  return(points_max)
+}
+
+ts_min<-function(signal)  
+{
+  points_min=which(diff(sign(diff(-signal)))==-2)+1
+  return(points_min)
+}
+
+argmax <- function(x, y, w=1, ...) {
+  require(zoo)
+  n <- length(y)
+  y.smooth <- loess(y ~ x, ...)$fitted
+  y.max <- rollapply(zoo(y.smooth), 2*w+1, max, align="center")
+  delta <- y.max - y.smooth[-c(1:w, n+1-1:w)]
+  i.max <- which(delta <= 0) + w
+  list(x=x[i.max], i=i.max, y.hat=y.smooth)
+}
+
+Calc_PRI0_PRImin <- function(x){
+  #fit with loess to further smooth the data
+  #morning period 
+  morning <- subset(x, Time < 10)
+  morning_loess <- loess(morning$PRIm.ma~morning$Time)
+  #find the index of local maximum 
+  max_ind <- extrema(morning_loess$fitted)
+  max_ind <- max_ind$maxima[2,1]
+  #the local maximum value 
+  PRI0 <- morning$PRIm.ma[max_ind]
+  
+  #noon period
+  noon <- subset(x, Time>10 & Time < 15)
+  noon_loess <- loess(noon$PRIm.ma~noon$Time)
+  #find the index of local minimum 
+  min_ind <- extrema(noon_loess$fitted)
+  min_ind <- min_ind[2,1]
+  #the local minimum value 
+  PRImin <- noon$PRIm.ma[min_ind]
+  
+  #combine them together
+  newlist <- list(PRI0, PRImin)
+  return(newlist)
+}
+
+Calc_PRI0 <- function(x){
+  #fit with loess to further smooth the data
+  #morning period 
+  morning <- subset(x, Time < 10)[,c("PRIm","PRIm.ma","Time")]
+  if(dim(morning)[1] < 20){
+    PRI0 <- max(morning$PRIm, na.rm = TRUE)
+    return(list(morning[morning$PRIm==PRI0,3], morning[morning$PRIm==PRI0,1]))
+  }else{
+    morning_loess <- loess(morning$PRIm.ma~morning$Time)
+    #find the index of local maximum 
+    max_ind <- extrema(morning_loess$fitted)
+    max_ind <- max_ind$maxima[2,1]
+    #the local maximum value 
+    PRI0 <- morning$PRIm.ma[max_ind]
+    return(list(morning$Time[max_ind], PRI0))
+  }
+}
+```
+####Implementation 
+```{r}
+#split by ID and Date
+temp_ls <- split(gssb, list(gssb$ID,gssb$Date))
+length(temp_ls) #1053 = 117*9 
+hist(sapply(temp_ls, function(x){dim(x)[1]}))
+#ls_PRI0 <- lapply(temp_ls, Calc_PRI0)
+ls_PRI0 <- list()
+for(i in 1:length(temp_ls)){
+  
+  ls_PRI0[[i]] <- Calc_PRI0(temp_ls[[i]])
+  #print(names(temp_ls)[i])
+  #print(ls_PRI0[[i]][1])
+  temp_ls[[i]]$Time_PRI0 <- ls_PRI0[[i]][[1]]
+  temp_ls[[i]]$PRI0.locmax <- ls_PRI0[[i]][[2]]
+}
+gssb_new <- do.call(rbind, temp_ls)
+unique(gssb_new$Time_PRI0)
+
+dim(a); dim(gssb)
+b <- gssb_new %>% group_by(ID) %>% mutate(Time_PRI00 = mean(Time_PRI0)) %>% ungroup
+
+ggplot(subset(gssb_new, Date == "2019-06-26" & Time > 7 & Time < 19), aes(x = Time, y = PRIm, color = as.factor(ID))) + geom_point() + ggtitle("PRI 2019-06-26") + scale_color_d3() + ylab("PRI") + xlab("Time")+facet_wrap(~ID, nrow = 3, ncol = 3)+theme_bw()+theme(legend.position = 'None') + geom_vline(data = subset(gssb_new, Date == "2019-06-26" & Time > 7 & Time < 19), aes(xintercept = Time_PRI0))
+
+
+
+
+
+#use an example 
+max_1 <- argmax(x = subset(temp_ls$`2 CONTROL WW  .2019-05-30`, Time < 10)$Time, y = subset(temp_ls$`2 CONTROL WW  .2019-05-30`, Time < 10)$PRIm.ma, w = 3)
+plot(x = subset(temp_ls$`2 CONTROL WW  .2019-05-30`, Time < 10)$Time, y = subset(temp_ls$`2 CONTROL WW  .2019-05-30`, Time < 10)$PRIm.ma)
+abline(v = max_1$x, col = "red")
+
+max_2 <- argmax(x = subset(temp_ls$`2 CONTROL WW  .2019-05-30`, Time < 10)$Time, y = subset(temp_ls$`2 CONTROL WW  .2019-05-30`, Time < 10)$PRIm.ma, w = 2)
+min_2 <- argmax(x = subset(temp_ls$`2 CONTROL WW  .2019-05-30`, Time < 10)$Time, y = -subset(temp_ls$`2 CONTROL WW  .2019-05-30`, Time < 10)$PRIm.ma, w = 2)
+plot(x = subset(temp_ls$`2 CONTROL WW  .2019-05-30`, Time < 10)$Time, y = subset(temp_ls$`2 CONTROL WW  .2019-05-30`, Time < 10)$PRIm.ma)
+abline(v = max_2$x, col = "red")
+abline(v = min_2$x, col = "blue")
+x = subset(temp_ls$`2 CONTROL WW  .2019-05-30`, Time < 10)$Time
+y = subset(temp_ls$`2 CONTROL WW  .2019-05-30`, Time < 10)$PRIm
+test(2, 0.05)
+#run function 
+
+
+for(i in 1:length(temp_ls)){
+  #fit with loess to further smooth the data
+  #morning period 
+  morning <- subset(temp_ls[[i]], Time < 10)
+  morning_loess <- loess(morning$PRIm.ma~morning$Time)
+  #find the index of local maximum 
+  max_ind <- extrema(morning_loess$fitted)
+  max_ind <- max_ind$maxima[2,1]
+  #the local maximum value 
+  PRI0 <- morning$PRIm.ma[max_ind]
+  
+  #noon period
+  noon <- subset(temp_ls[[i]], Time>10 & Time < 15)
+  noon_loess <- loess(noon$PRIm.ma~noon$Time)
+  #find the index of local minimum 
+  min_ind <- extrema(noon_loess$fitted)
+  min_ind <- min_ind[2,1]
+  #the local minimum value 
+  PRImin <- noon$PRIm.ma[min_ind]
+}
+
+```
+
 PRI0 is the data when the solar zenith is smaller than 40 degree
 ###Filter by zenith anlge and PAR
 ```{r}
@@ -637,9 +875,11 @@ lm2 <- lm(PRIm~NDVIm, data= subset(df_PRI_weather, Date > "2019-07-01"& ID!= "4 
 summary(lm2)
 
 #PRI vs Chlorophyll content
-ggplot(subset(df_PRI_phys,Date>"2019-07-01"), aes(x = CHL, y = PRIm)) + geom_point(aes(color = ID)) + scale_color_d3() + theme_bw() + geom_smooth(method = "lm", formula = y~x) + xlab("Chlorophyll Content (ug cm-2)") + ylab("PRI")
+ggplot(subset(df_PRI_phys,Date>"2019-07-01"), aes(x = CHL, y = PRIm)) + geom_point(aes(color = as.factor(Date))) + scale_color_d3() + theme_bw() + geom_smooth(method = "lm", formula = y~x) + xlab("Chlorophyll Content (ug cm-2)") + ylab("PRI")
 lm3 <- lm(PRIm~CHL, data =subset(df_PRI_phys, Date>"2019-07-01"))
 summary(lm3)
+
+
 
 #PRI0 vs NDVI
 ggplot(subset(df_PRI_weather,Date<"2019-07-01"), aes(x = NDVIm, y = PRI0.ma)) + geom_point(aes(color = ID)) + scale_color_d3() + theme_bw() + geom_smooth(method = "lm", formula = y~x) + xlab("NDVI") + ylab("PRI0") + ggtitle("Before Maximum Canopy Cover")
@@ -1029,33 +1269,36 @@ cor(subset(gs_daily_swp, Date != "2019-05-31")$PRI_NDVI_scale, subset(gs_daily_s
 ```
 #Soil Moisture data 
 ```{r}
-unique(gssb_filt$Date)
-unique(gssb_filt$Time)
+path_stands <- "C:/Users/zt92/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/Stands"
 
-summary(gssb_filt$VWC) #there are some values close to 1000
-gssb_filt_vwc <- subset(gssb_filt, VWC<800 & VWC > 0)
 
-hist(gssb$VWC)
-gssb_vwc <- subset(gssb, VWC < 800 & VWC>0)
+gssoil <- read.csv(file.path(path_stands, "S.STANDS.Soil.csv"))
+names(gssoil)[3] <- "TIMESTAMP"
+gssoil$TIMESTAMP <- as.POSIXct(gssoil$TIMESTAMP, format = "%m/%d/%Y %H:%M")
+gssoil <- gssoil %>% mutate(Date = date(TIMESTAMP),
+                            Time = hour(TIMESTAMP)+minute(TIMESTAMP)/60+second(TIMESTAMP)/3600,
+                            ID = paste(BLOCK, TREATMENT, by = " "))
+head(gssoil)
+#remove the days
+gssoil <- subset(gssoil, Date >= "2019-05-11" & Date <= "2019-09-04")
 
-VWC_daily <- aggregate(gssb_vwc$VWC, list("Date"=gssb_vwc$Date, "ID"=gssb_vwc$ID, "BLOCK"=gssb_vwc$BLOCK, "TREATMENT"=gssb_vwc$TREATMENT), function(x){mean(x,na.rm=TRUE)})
-names(VWC_daily)[5] <- "VWC_all"
-ggplot(VWC_daily, aes(x = Date, y = VWC_all)) + geom_point(aes(color = ID)) + theme_bw() + scale_color_d3() + facet_wrap(~TREATMENT)
-VWC_daily <- aggregate(gssb_filt_vwc$VWC, list("Date"=gssb_filt_vwc$Date, "ID" = gssb_filt_vwc$ID, "BLOCK" = gssb_filt_vwc$BLOCK, "TREATMENT" = gssb_filt_vwc$TREATMENT), function(x){mean(x,na.rm = TRUE)})
-dim(VWC_daily)
-head(VWC_daily)
-names(VWC_daily)[5] <- "VWC_diurnal"
-ggplot(VWC_daily, aes(x = Date, y = VWC_diurnal)) + geom_point(aes(color = ID)) + theme_bw() + scale_color_d3() + facet_wrap(~TREATMENT)
-weather_daily_all <- aggregate(weather[,c('Radiation','AirTemp','VPD')], list("Date"= weather$Date), function(x){mean(x,na.rm = TRUE)})
+hist(gssoil$VWC)
+#remove the outliers
+gssoil <- subset(gssoil, VWC<800 & VWC > 0)
+#remove the cimis one
+gssoil <- subset(gssoil, TREATMENT != "CIMIS")
 
-#from 11:00-15:00
-temp_df <- subset(weather, Time > 11 & Time < 15)
-weather_daily_noon <- aggregate(temp_df[,c('Radiation','AirTemp','VPD')], list("Date"= temp_df$Date), function(x){mean(x,na.rm = TRUE)})
+#calculate daily data
+##subset to 5am-6am in the morning
+gssoil_morn <- subset(gssoil, Time >= 5 & Time <=6)
+VWC_daily <- aggregate(gssoil_morn$VWC, list("Date"=gssoil_morn$Date, "ID"=gssoil_morn$ID, "BLOCK"=gssoil_morn$BLOCK, "TREATMENT"=gssoil_morn$TREATMENT), function(x){mean(x, na.rm = TRUE)})
+names(VWC_daily)[5] <- "VWC_morn"
+ggplot(VWC_daily, aes(x = Date, y = VWC_morn)) + geom_point(aes(color = ID)) + theme_bw() + scale_color_d3() + facet_wrap(~TREATMENT,nrow = 3)+ylim(0.2, 0.35)+geom_vline(xintercept=as.Date(c("2019-07-07","2019-08-26")), linetype="dashed")
+ggplot(VWC_daily, aes(x = Date, y = VWC_morn)) + geom_point(aes(color = ID)) + theme_bw() + scale_color_d3() + facet_wrap(~TREATMENT)+ylim(0.2, 0.35)+geom_vline(xintercept=as.Date(c("2019-07-07","2019-08-26")), linetype="dashed")
 
-#combine them together with different names
-weather_season <- merge(weather_daily_all, weather_daily_noon, by = "Date")
-head(weather_season)
-names(weather_season) <- c("Date","Radiation.all","AirTemp.all","VPD.all","Radiation.noon","AirTemp.noon","VPD.noon")
+##only Control DDD 
+ggplot(subset(VWC_daily,TREATMENT == "CONTROL DDD"), aes(x = Date, y = VWC_morn)) + geom_point(aes(color = ID)) + theme_bw() + scale_color_d3() +ylim(0.2, 0.35) + geom_vline(xintercept=as.Date(c("2019-07-07","2019-08-26")), linetype="dashed")
+
 
 ```
 
