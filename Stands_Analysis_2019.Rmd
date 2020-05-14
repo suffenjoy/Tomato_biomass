@@ -7,6 +7,7 @@ output: html_document
 
 #Package
 ```{r}
+library(MASS)
 library(sjPlot)
 library(psycho)
 library(corrplot)
@@ -38,6 +39,7 @@ library(broom)
 #Read data
 ```{r}
 path_stands <- "C:/Users/zt92/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/Stands"
+
 gs <- read.csv(file.path(path_stands, "S.STANDS.csv"))
 
 str(gs)
@@ -80,7 +82,8 @@ date_selection <- function(data, begin, end){
 #Weather data
 ##Read weather data
 ```{r}
-path_stands <- "C:/Users/zt92/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/Stands"
+#path_stands <- "C:/Users/zt92/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/Stands"
+path_stands <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/Stands"
 weather <- read.csv(file.path(path_stands, "S.WEATHER.csv"))
 head(weather)
 names(weather)[1] <- "TIMESTAMP"
@@ -132,12 +135,35 @@ weather_season <- merge(weather_daily_all, weather_daily_noon, by = "Date")
 head(weather_season)
 names(weather_season) <- c("Date","Radiation.all","AirTemp.all","VPD.all","Radiation.noon","AirTemp.noon","VPD.noon")
 
-p1 = ggplot(weather_season, aes(x = Date, y = VPD.noon))+geom_line(color="red")+theme_bw()
+
+
+```
+##Plot of Daily Average
+```{r}
+#Plot
+p1 = ggplot(weather_season, aes(x = Date, y = VPD.all))+geom_line(linetype = "longdash", size = 1)+theme_pubr(border = TRUE, base_family = "serif", base_size = 14) + ylab("Vapor Pressure Deficit (kPa)")+ geom_vline(xintercept = as.Date(c("2019-05-31","2019-06-11","2019-06-25")), color = "darkgreen", linetype = "dashed") + geom_vline(xintercept = as.Date(c("2019-07-17","2019-07-25","2019-08-01","2019-08-08","2019-08-14")), color = "red", linetype = "dashed")# + geom_vline(xintercept = as.Date(c("2019-07-07","2019-07-28","2019-08-26")))
 p1
-p2 = ggplot(weather_season, aes(x = Date, y = Radiation.noon,color=2))+geom_line(color="blue")+theme_bw()
+p2 = ggplot(weather_season, aes(x = Date, y = AirTemp.all))+geom_line(linetype = "dotdash", size = 1)+theme_pubr(border = TRUE, base_family = "serif", base_size = 14) + ylab("Mean Air Temperature (°C)")+ geom_vline(xintercept = as.Date(c("2019-05-31","2019-06-11","2019-06-25")), color = "darkgreen", linetype = "dashed") + geom_vline(xintercept = as.Date(c("2019-07-17","2019-07-25","2019-08-01","2019-08-08","2019-08-14")), color = "red", linetype = "dashed")# + geom_vline(xintercept = as.Date(c("2019-07-07","2019-07-28","2019-08-26")))
 p2
-p3 = ggplot(weather_season, aes(x = Date, y = AirTemp.noon))+geom_line(color="darkgreen")+theme_bw()
-grid.arrange(p1,p2,p3,nrow= 3)
+p3 = ggplot(weather_season, aes(x = Date, y = Radiation.all*24*0.0036))+geom_line(linetype = "solid", size = 1)+theme_pubr(border = TRUE, base_family = "serif", base_size = 14) + ylab("Solar Radiation (MJ/m2)") + geom_vline(xintercept = as.Date(c("2019-05-31","2019-06-11","2019-06-25")), color = "darkgreen", linetype = "dashed") + geom_vline(xintercept = as.Date(c("2019-07-17","2019-07-25","2019-08-01","2019-08-08","2019-08-14")), color = "red", linetype = "dashed")# + geom_vline(xintercept = as.Date(c("2019-07-07","2019-07-28","2019-08-26")))
+
+grid.arrange(p1,p2,p3,nrow = 3)
+
+```
+##Plot of diurnal change
+```{r}
+ggplot(subset(weather, Date  == "2019-05-31"), aes(x = TIMESTAMP, y = Radiation))+geom_line()
+ggplot(subset(weather, Date  == "2019-05-31"), aes(x = TIMESTAMP, y = AirTemp))+geom_line()
+ggplot(subset(weather, Date  == "2019-05-31"), aes(x = TIMESTAMP, y = VPD))+geom_line()
+
+ggplot(subset(weather, Date  == "2019-07-08"), aes(x = TIMESTAMP, y = Radiation))+geom_line()
+ggplot(subset(weather, Date  == "2019-07-08"), aes(x = TIMESTAMP, y = AirTemp))+geom_line()
+ggplot(subset(weather, Date  == "2019-07-08"), aes(x = TIMESTAMP, y = VPD))+geom_line()
+
+p4 = ggplot(subset(weather, Date  == "2019-08-08"), aes(x = TIMESTAMP, y = VPD))+geom_line(linetype = "longdash",size=1)+theme_pubr(border = TRUE, base_family = "serif", base_size = 14) + ylab("Vapor Pressure Deficit (kPa)")
+p5 = ggplot(subset(weather, Date  == "2019-08-08"), aes(x = TIMESTAMP, y = AirTemp))+geom_line(linetype = "dotdash", size = 1)+theme_pubr(border = TRUE, base_family = "serif", base_size = 14)+ ylab("Mean Air Temperature (°C)")
+p6 = ggplot(subset(weather, Date  == "2019-08-08"), aes(x = TIMESTAMP, y = Radiation))+geom_line(linetype = "solid", size = 1)+theme_pubr(border = TRUE, base_family = "serif", base_size = 14) + ylab("Solar Radiation (W/m2)")
+grid.arrange(p4,p5,p6, nrow = 3)
 ```
 
 
@@ -617,6 +643,106 @@ NDVIm_dayave <- function(data, early, late, begin, end){
 ```
 
 ##Calculate daily average
+###PRI morning average
+```{r}
+temp_split <- split(gssb_filt, gssb_filt$ID)
+temp_ls <- lapply(temp_split, function(x){DayAve(x,9,10,"2019-05-11","2019-09-04",44,min)})
+for(i in 1:length(temp_ls)){
+  temp_ls[[i]]$ID = names(temp_ls)[i]
+}
+PRImorning_season <- do.call(rbind, temp_ls)
+row.names(PRImorning_season) <- NULL
+head(PRImorning_season)
+sum(is.na(PRImorning_season))  #There is no NAs
+names(PRImorning_season)[2] <- "PRImorning"
+
+```
+###PRI afternoon average
+```{r}
+temp_split <- split(gssb_filt, gssb_filt$ID)
+temp_ls <- lapply(temp_split, function(x){DayAve(x,15,17,"2019-05-11","2019-09-04",44,min)})
+for(i in 1:length(temp_ls)){
+  temp_ls[[i]]$ID = names(temp_ls)[i]
+}
+PRIaftern_season <- do.call(rbind, temp_ls)
+row.names(PRIaftern_season) <- NULL
+head(PRIaftern_season)
+sum(is.na(PRIaftern_season))  #There is no NAs
+names(PRIaftern_season)[2] <- "PRIaftern"
+
+```
+###PRI noon
+```{r}
+temp_split <- split(gssb_filt, gssb_filt$ID)
+temp_ls <- lapply(temp_split, function(x){DayAve(x,11,14,"2019-05-11","2019-09-04",44,min)})
+for(i in 1:length(temp_ls)){
+  temp_ls[[i]]$ID = names(temp_ls)[i]
+}
+PRInoon_season <- do.call(rbind, temp_ls)
+row.names(PRInoon_season) <- NULL
+head(PRInoon_season)
+sum(is.na(PRInoon_season))  #There is no NAs
+names(PRInoon_season)[2] <- "PRInoon"
+```
+###The value of different time window
+```{r}
+PRIwindow_season <- merge(PRImorning_season, PRIaftern_season, by = c("Date","ID"))
+PRIwindow_season <- merge(PRIwindow_season, PRInoon_season, by = c("Date","ID"))
+head(PRIwindow_season)
+#clear the empty space in the ID
+PRIwindow_season$ID <- trimws(PRIwindow_season$ID, which = "right")
+
+
+#merge with biophysical 
+head(phys_BA)
+PRIwindow_phys <- merge(PRIwindow_season, phys_BA, by = c("Date","ID"))
+
+#Plot
+ggplot(PRIwindow_season, aes(x = Date, y = PRInoon, color = ID)) + geom_point()
+ggplot(PRIwindow_season, aes(x = Date, y = PRImorning, color = ID)) + geom_point()
+ggplot(PRIwindow_season, aes(x = Date, y = PRIaftern, color = ID)) + geom_point()
+
+temp_sb <- subset(PRIwindow_phys, Date!="2019-05-31" & Date !="2019-06-11")
+temp_sb2 <- subset(PRIwindow_phys, Date!="2019-05-31" & Date !="2019-06-11" & Date != "2019-06-25")
+temp_sb3 <- subset(PRIwindow_phys, Date=="2019-05-31" | Date =="2019-06-11" | Date == "2019-06-25")
+
+#from 06-28
+cor(temp_sb$SWP, temp_sb$PRInoon)^2  #0.355
+cor(temp_sb$SWP, temp_sb$PRIaftern)^2 #0.334
+cor(temp_sb$SWP, temp_sb$PRImorning)^2 #0.258
+cor(temp_sb$SWP, temp_sb$PRInoon - temp_sb$PRImorning)^2 #0.294
+cor(temp_sb$SWP, temp_sb$PRInoon - temp_sb$PRIaftern)^2 #0.074
+cor(temp_sb$SWP, temp_sb$PRIaftern - temp_sb$PRImorning)^2 #0.249
+
+
+#If only After peak NDVI
+cor(temp_sb2$SWP, temp_sb2$PRInoon)^2  #0.508
+cor(temp_sb2$SWP, temp_sb2$PRIaftern)^2 #0.563
+cor(temp_sb2$SWP, temp_sb2$PRImorning)^2 #0.500
+cor(temp_sb2$SWP, temp_sb2$PRInoon - temp_sb2$PRImorning)^2 #0.139
+cor(temp_sb2$SWP, temp_sb2$PRInoon - temp_sb2$PRIaftern)^2 #0.218
+cor(temp_sb2$SWP, temp_sb2$PRIaftern - temp_sb2$PRImorning)^2 #0.324
+
+#If only before peak NDVI
+cor(temp_sb3$SWP, temp_sb3$PRInoon)^2  #0.0026
+cor(temp_sb3$SWP, temp_sb3$PRIaftern)^2 #0.0028
+cor(temp_sb3$SWP, temp_sb3$PRImorning)^2 #0.01
+cor(temp_sb3$SWP, temp_sb3$PRInoon - temp_sb3$PRImorning)^2 #0.0147
+cor(temp_sb3$SWP, temp_sb3$PRInoon - temp_sb3$PRIaftern)^2 #0.0021
+cor(temp_sb3$SWP, temp_sb3$PRIaftern - temp_sb3$PRImorning)^2 #0.0014
+
+
+#Plot
+ggplot(subset(PRIwindow_phys, Date!="2019-05-31" & Date !="2019-06-11"), aes(x = PRInoon, y = -SWP)) + geom_point(size = 2,aes(shape = as.factor(Date))) + theme_pubr(base_size = 14, base_family = "serif", border = TRUE) + geom_smooth(method = "lm", se = FALSE, color = "red") + xlab("PRI at noon time") + ylab("Stem Water Potential (Bars)") + theme(legend.title = element_blank(), legend.position = c(0.1,0.82)) 
+
+ggplot(subset(PRIwindow_phys, Date!="2019-05-31" & Date !="2019-06-11"), aes(x = PRImorning, y = SWP, color = as.factor(Date))) + geom_point()
+ggplot(subset(PRIwindow_phys, Date!="2019-05-31" & Date !="2019-06-11"), aes(x = PRIaftern, y = SWP, color = as.factor(Date))) + geom_point()
+
+
+#ggplot(subset(PRIwindow_phys), aes(x = PRIaftern, y = SWP, color = as.factor(Date))) + geom_point()
+
+```
+
 ###PRImin-PRI0 (follow Troy's paper) with moving average
 ```{r}
 temp_split <- split(gssb_filt, gssb_filt$ID)
@@ -944,7 +1070,12 @@ ggplot(subset(df_PRI_phys, Date<="2019-07-01"), aes(y = SWP, x= PRI_NDVI.ma_scal
 
 ##Seasonal Average
 ```{r}
-ggplot(df_PRI_weather, aes(y = PRI_NDVI.ma_scale, x = AirTemp.noon)) + geom_point(aes(color = ID)) + theme_bw() + scale_color_d3() + geom_smooth(method=  "lm", formula = y~x+I(1/x)) + xlab("Air Temperature (°C)") + ylab("PRIscale -  NDVIscale") + ggtitle("Seasonal Mean Air Temperature")
+ggplot(df_PRI_weather, aes(y = PRI_NDVI.ma_scale, x = Radiation.noon)) + geom_point(aes(color = ID)) + theme_bw(base_family = "serif") + scale_color_d3() + geom_smooth(method=  "lm", formula = y~x+I(1/x)) + xlab("Air Temperature (°C)") + ylab("PRIscale -  NDVIscale") + ggtitle("Seasonal Mean Air Temperature")
+lm5 <- lm(PRI_NDVI.ma_scale~Radiation.noon, data = df_PRI_weather)
+summary(lm5)
+
+
+ggplot(df_PRI_weather, aes(y = PRI_NDVI.ma_scale, x = AirTemp.noon)) + geom_point(aes(color = ID)) + theme_bw(base_family = "serif") + scale_color_d3() + geom_smooth(method=  "lm", formula = y~x+I(1/x)) + xlab("Air Temperature (°C)") + ylab("PRIscale -  NDVIscale") + ggtitle("Seasonal Mean Air Temperature")
 lm6 <- lm(PRI_NDVI.ma_scale~AirTemp.noon, data = df_PRI_weather)
 summary(lm6)  #R2=0.235
 lm7 <- lm(PRI_NDVI.ma_scale~AirTemp.noon+I(1/AirTemp.noon), data = df_PRI_weather)
@@ -991,14 +1122,43 @@ ggplot(gssb_filt, aes(x = VPD, y = PRIm)) + geom_point(aes(color = as.factor(BLO
 ```
 
 #PRI and Biophysical Parameters
+##Plots for lab meeting 
 ```{r}
 names(phys_weather_PRI)
+phys_weather_PRI$TREATMENT2 <- factor(phys_weather_PRI$TREATMENT, levels = c("BAYER 16 (SOIL) WW", "CONTROL WW", "CONTROL DDD"), order = TRUE)
 
 #SWP
-ggplot(phys_weather_PRI, aes(x = Date , y= -SWP, color =ID)) + geom_point() + scale_color_d3() + theme_bw()
+ggplot(phys_weather_PRI, aes(x = as.factor(Date) , y= -SWP, fill= TREATMENT2)) + geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Stem Water Potential (Bars)") + scale_fill_tableau() + ggtitle("Stem Water Potential Seasonal Change")
+
+
+ggplot(phys_weather_PRI, aes(x = as.factor(Date) , y= PRI.NDVI.ma_scale, color= TREATMENT2)) + geom_point()  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI") + scale_color_tableau()
+
+#PRIm
+ggplot(phys_weather_PRI, aes(x = as.factor(Date) , y= PRIm, fill= TREATMENT2)) +geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI") + scale_fill_tableau()  + ggtitle("Noon Average Stand PRI Seasonal Change")
+
+#adjusted PRIm
+##PRI-NDVIscale
+ggplot(phys_weather_PRI, aes(x = as.factor(Date) , y= PRI_NDVI.ma_scale, fill= TREATMENT2)) +geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRIscale - NDVIscale") + scale_fill_tableau()  + ggtitle("PRIscale-NDVIscale Seasonal Change")
+##PRI/NDVI
+ggplot(phys_weather_PRI, aes(x = as.factor(Date) , y= PRI.NDVI.ma, fill= TREATMENT2)) +geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI/NDVI") + scale_fill_tableau()  + ggtitle("PRI/NDVI Seasonal Change")
+##PRImin-PRI0
+ggplot(phys_weather_PRI, aes(x = as.factor(Date) , y= PRImin_PRI0.ma, fill= TREATMENT2)) +geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInoon-PRI0") + scale_fill_tableau()  + ggtitle("PRInoon-PRI0 Seasonal Change")
+ggplot(phys_weather_PRI, aes(x = as.factor(Date) , y= PRIdelta.ma, fill= TREATMENT2)) +geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInoon-PRI0") + scale_fill_tableau()  + ggtitle("PRInoon-PRI0 Seasonal Change")
+
+
+
+#Conductance
+ggplot(phys_weather_PRI, aes(x = as.factor(Date) , y= Cond, fill= TREATMENT2)) + geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Stomatal Conductance") + scale_fill_tableau() + ggtitle("Stomatal Conductance Seasonal Change")
+
+#NPQ
+ggplot(phys_weather_PRI, aes(x = as.factor(Date) , y= NPQ, fill= TREATMENT2)) + geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NPQ") + scale_fill_tableau() + ggtitle("Nonphotochemical Quenching Seasonal Change")
+
+#CHL
+ggplot(phys_weather_PRI, aes(x = as.factor(Date) , y= CHL, fill= TREATMENT2)) + geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Chlorophyll Content") + scale_fill_tableau() + ggtitle("Chlorophyll Content Seasonal Change")
+
+
 ggplot(phys_weather_PRI, aes(x = Date , y= PRI_NDVI_scale, color =ID)) + geom_point() + scale_color_d3() + theme_bw()
 ggplot(df_PRI_weather, aes(x = Date, y = PRI_NDVI_scale, color = ID)) + geom_point() + scale_color_d3()+theme_bw()
-ggplot()
 
 
 ggplot(phys_weather_PRI, aes(x = SWP, y = PRIm)) + geom_point(aes(color = ID)) + scale_color_d3() + theme_bw()
@@ -1147,7 +1307,103 @@ summary(lmSWP5) #0.4313
 #
 
 ```
+###Machine Learning
+```{r}
+set.seed(7)
+trainIndex <- createDataPartition(phys_weather_PRI$SWP, p = 0.6, list = FALSE)
+##all dates 
+train_stand <- phys_weather_PRI[trainIndex,]
+test_stand <- phys_weather_PRI[-trainIndex,]
 
+fitCon <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+rf_swp_stand1 <- train(x = train_stand[,c("PRIm.ma","NDVIm","PRI.NDVI.ma","PRI0.ma","Radiation.noon","VPD.noon","AirTemp.noon")], y = train_stand[,"SWP"], trControl = fitCon, method = "rf", verbose = FALSE, importance = TRUE, tuneLength = 10)
+rf_swp_stand1
+cor(predict(rf_swp_stand1, newdata = test_stand), test_stand$SWP)^2
+RMSE(predict(rf_swp_stand1, newdata = test_stand), test_stand$SWP)
+plot(predict(rf_swp_stand1, newdata = test_stand), test_stand$SWP)
+varImp(rf_swp_stand1)
+
+rf_swp_stand2 <- train(x = train_stand[,c("PRIm.ma","NDVIm","Radiation.noon","VPD.noon")], y = train_stand[,"SWP"], trControl = fitCon, method = "rf", verbose = FALSE, importance = TRUE, tuneLength = 10)
+rf_swp_stand2
+cor(predict(rf_swp_stand2, newdata = test_stand), test_stand$SWP)^2  #0.681
+RMSE(predict(rf_swp_stand2, newdata = test_stand), test_stand$SWP) #0.728
+MAE(predict(rf_swp_stand2, newdata = test_stand), test_stand$SWP)  #0.492
+plot(predict(rf_swp_stand2, newdata = test_stand), test_stand$SWP)
+test_stand$SWP_rfpred <- predict(rf_swp_stand2, newdata = test_stand)
+
+
+ggplot(test_stand, aes(x = -SWP_rfpred, y = -SWP)) + geom_point(size = 2, aes(color = as.factor(Date))) + geom_smooth(method = "lm", se  =FALSE, color = "red") + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right") +xlab("Predicted SWP (Bars)")+ylab("Observed SWP (Bars)") + xlim(-8,-2.5)+ylim(-8,-2.5) + theme(legend.title = element_blank())
+varImp(rf_swp_stand2)
+
+
+glmnet_swp_stand1 <- train(x = train_stand[,c("PRIm.ma","NDVIm","Radiation.noon","VPD.noon")], y = train_stand[,"SWP"], trControl = fitCon, method = "glmnet", verbose = FALSE, importance = TRUE, tuneLength = 10)
+cor(predict(glmnet_swp_stand1, newdata = test_stand), test_stand$SWP)  #0.56
+RMSE(predict(glmnet_swp_stand1, newdata = test_stand), test_stand$SWP) #1.09
+
+
+rf_swp_stand3 <- train(x = train_stand[,c("PRIm.ma","NDVIm","PRI.NDVI.ma","Radiation.noon","VPD.noon")], y = train_stand[,"SWP"], trControl = fitCon, method = "rf", verbose = FALSE, importance = TRUE, tuneLength = 10)
+rf_swp_stand3
+cor(predict(rf_swp_stand3, newdata = test_stand), test_stand$SWP)^2  #0.698
+RMSE(predict(rf_swp_stand3, newdata = test_stand), test_stand$SWP) #0.706
+MAE(predict(rf_swp_stand3, newdata = test_stand), test_stand$SWP)  #0.508
+plot(predict(rf_swp_stand3, newdata = test_stand), test_stand$SWP)
+varImp(rf_swp_stand3)
+
+
+rf_swp_stand4 <- train(x = phys_weather_PRI[,c("PRIm.ma","NDVIm","Radiation.noon","VPD.noon")], y = phys_weather_PRI[,"SWP"], trControl = fitCon, method = "rf", verbose = FALSE, importance = TRUE, tuneLength = 10)
+rf_swp_stand4
+varImp(rf_swp_stand4)
+
+phys_weather_PRI$SWP_rfpred <- predict(rf_swp_stand4)
+
+ggplot(phys_weather_PRI, aes(x = -SWP_rfpred, y = -SWP)) + geom_point(size = 2, aes(color = as.factor(Date))) + geom_smooth(method = "lm", se  =FALSE, color = "red") + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right") +xlab("Predicted SWP (Bars)")+ylab("Observed SWP (Bars)") + xlim(-9,-2.5)+ylim(-9,-2.5) + theme(legend.title=element_blank())
+
+rf_swp_stand4
+
+#fit to the entire time series
+df_PRI_weather_nona <- na.omit(df_PRI_weather[,c("Date","ID","BLOCK","TREATMENT","PRIm.ma","NDVIm","Radiation.noon","VPD.noon")])
+pred_rf_stand4 <- predict(rf_swp_stand4, newdata = df_PRI_weather_nona)
+df_PRI_weather_nona$SWP_rfpred <- pred_rf_stand4
+ggplot(df_PRI_weather_nona, aes(x = Date, y = -SWP_rfpred, color = ID)) + geom_point() + geom_vline(xintercept = as.Date(c("2019-05-31","2019-06-11","2019-06-25")), color = "darkgreen", linetype = "dashed") + geom_vline(xintercept = as.Date(c("2019-07-17","2019-07-25","2019-08-01","2019-08-08","2019-08-14")), color = "red", linetype = "dashed") + facet_wrap(~TREATMENT, nrow = 3) + ylab("Predicted Stem Water Potential (Bars)") + theme_pubr(base_size = 14, base_family = "serif", legend = "right") + scale_color_d3() + geom_smooth(method = "loess", se = FALSE)
+
+
+```
+###Stepwise regression
+```{r}
+##all dates
+fullmodel_lmSWP <- lm(SWP~PRIm+NDVIm+PRI0.ma+PRI.NDVI.ma+Radiation.noon+VPD.noon+AirTemp.noon, data= phys_weather_PRI)
+fullmodel_lmSWP <- lm(SWP~PRIm+NDVIm+PRI0.ma+Radiation.noon+VPD.noon+AirTemp.noon, data= phys_weather_PRI)
+
+fullmodel_lmSWP <- lm(SWP~PRIm+NDVIm+Radiation.noon+VPD.noon+AirTemp.noon, data= phys_weather_PRI)
+
+stepmodel_lmSWP <- stepAIC(fullmodel_lmSWP, direction = "both", trace = FALSE)
+summary(stepmodel_lmSWP)
+stepmodel_lmSWP
+
+phys_weather_PRI$SWP_steplm <- predict(stepmodel_lmSWP)
+RMSE(phys_weather_PRI$SWP_steplm, phys_weather_PRI$SWP)
+RMSE(phys_weather_PRI$SWP_steplm, phys_weather_PRI$SWP)
+
+
+ggplot(phys_weather_PRI, aes(x = -SWP_steplm, y = -SWP))+geom_point(aes(color = as.factor(Date)),size = 2)+geom_smooth(method = "lm", se= FALSE)+theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+xlab("Predicted SWP (Bars)")+ylab("Observed SWP (Bars)")+theme(legend.title = element_blank())+xlim(-9,-2)+ylim(-9,-2)+ggtitle("Stepwise Regression")
+
+##Only after 6/25
+fullmodel_lmSWP2 <- lm(SWP~PRIm+NDVIm+PRI0.ma+PRI.NDVI.ma+Radiation.noon+VPD.noon+AirTemp.noon, data= subset(phys_weather_PRI,Date>="2019-06-25"))
+fullmodel_lmSWP2 <- lm(SWP~PRIm+NDVIm+Radiation.noon+VPD.noon+AirTemp.noon, data= subset(phys_weather_PRI,Date>="2019-06-25"))
+
+stepmodel_lmSWP2 <- stepAIC(fullmodel_lmSWP2, direction = "both", trace = FALSE)
+stepmodel_lmSWP2
+summary(stepmodel_lmSWP2)
+
+
+##only after full canopy
+fullmodel_lmSWP3 <- lm(SWP~PRIm+NDVIm+PRI0.ma+PRI.NDVI.ma+PRI0.ma+Radiation.noon+VPD.noon+AirTemp.noon, data= subset(phys_weather_PRI,Date>="2019-07-17"))
+stepmodel_lmSWP3 <- stepAIC(fullmodel_lmSWP2, direction = "both", trace = FALSE)
+stepmodel_lmSWP3
+summary(stepmodel_lmSWP3)
+
+```
+###Linear Regression 
 ```{r}
 lmCond <- lm(Cond~PRIm+NDVIm+VPD.noon+Radiation.noon+AirTemp.noon, data = phys_weather_PRI)
 summary(lmCond)
@@ -1160,6 +1416,9 @@ summary(lmSWP2)
 fullmodel_lmSWP <- lm(SWP~PRIm+NDVIm+PRI.NDVI+Radiation.noon+VPD.noon+AirTemp.noon, data= phys_weather_PRI)
 stepmodel_lmSWP <- stepAIC(fullmodel_lmSWP, direction = "both", trace = FALSE)
 summary(stepmodel_lmSWP)
+
+
+
 
 stepmodel_lmSWP <- stepAIC(fullmodel_lmSWP, direction = "both", trace = FALSE)
 
@@ -1333,7 +1592,7 @@ macaw_pri_081019 <- raster(file.path(path_macaw, 'pri_081019.tif'))
 macaw_pri_081519 <- raster(file.path(path_macaw, 'pri_081519.tif'))
 macaw_pri_082219 <- raster(file.path(path_macaw, 'pri_082219.tif'))
 
-
+points_shp <- shapefile(file.path(path_shp, ""))
 ```
 ##Extracted dataframes 
 ```{r}
