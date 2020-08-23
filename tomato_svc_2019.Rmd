@@ -1,0 +1,748 @@
+---
+title: "tomato_svc_2019"
+author: "Zhehan"
+date: "4/29/2020"
+output: html_document
+---
+#Package
+```{r}
+library(hsdar)
+library(ggplot2)
+library(spectrolab)
+library(corrplot)
+library(readxl)
+library(ggthemes)
+library(papeR)
+library(sjPlot)
+```
+
+#read svc reflectance
+##0612
+```{r}
+path_svc_0612 <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/dataframes/SVC/20190612"
+#cleaned dataframe
+df_0612 <- read_excel(file.path(path_svc_0612, "S2.06110612.2019.SVC.xlsx"))
+
+#svc files
+svc_0612 <- spectrolab::read_spectra(path_svc_0612, format = "sig")
+
+#reflectance matrix
+ref_0612 <- spectrolab::reflectance(svc_0612)
+#wavelength
+wavelen_0612 <- spectrolab::wavelengths(svc_0612)
+
+#change the order to make the spectral continuous
+wavelen_order <- order(wavelen_0612)
+wavelen_0612 <- wavelen_0612[wavelen_order]
+for(i in 1:dim(ref_0612)[1]){
+  ref_0612[i, ] <- ref_0612[i,wavelen_order]
+}
+
+#get the names
+files_0612 <- names(svc_0612)
+
+#create the Speclib
+speclib_0612 <- speclib(ref_0612, wavelen_0612)
+speclib_0612
+
+#Mask
+#speclib_0612_masked <- speclib_0612
+#mask(speclib_0612_masked) <- c(1040, 1060, 1300, 1450)
+#par(mfrow = c(1,2))
+#plot(speclib_0612)
+#plot(speclib_0612_masked)
+##interpolate the masked window
+#speclib_0612_int <- interpolate.mask(speclib_0612_masked)
+#plot(speclib_0612_int)
+#speclib_0612 <- interpolate.mask(speclib_0612)
+#plot(speclib_0612)
+
+
+
+#plot default
+hsdar::plot(speclib_0612)
+
+#add SI (supplementary information) data
+SI(speclib_0612) <- data.frame("OBS" = 1:129)
+speclib_0612@SI
+#subset the spectral using Plants IDs
+speclib_0612 <- subset(speclib_0612, OBS %in% df_0612$OBS)
+
+
+#combine with the df
+SI(speclib_0612) <- merge(SI(speclib_0612), df_0612, by = "OBS")
+
+#combine with the ground measurement
+names(SI(speclib_0612))
+names(SI(speclib_0612)) <- c("OBS","Block","Treatment","Plot","Plant","p532","p570","PRI")
+SI(speclib_0612) 
+
+SI_0612 <- merge(SI(speclib_0612), subset(phys_PL, Date=="2019-06-11"), by = c("Treatment","Plot","Plant"), sort = FALSE)
+speclib_0612 <- subset(speclib_0612, OBS %in% SI_0612$OBS)
+SI(speclib_0612) <- SI_0612
+
+speclib_0612
+head(SI(speclib_0612))
+#filter & smooth 
+plot(speclib_0612)
+speclib_0612_sg <- noiseFiltering(speclib_0612, method = "sgolay", n = 11)
+plot(speclib_0612_sg, main = "06-12", ylim = c(0,0.8))
+#speclib_0612_lo <- noiseFiltering(speclib_0612, method = "lowess", f = 0.01)
+
+#change to numeric
+SI(speclib_0612_sg)$SWP <- as.numeric(as.character(SI(speclib_0612_sg)$SWP))
+SI(speclib_0612_sg)$CHL <- as.numeric(as.character(SI(speclib_0612_sg)$CHL))
+
+```
+##0626
+```{r}
+path_svc_0626 <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/dataframes/SVC/20190626"
+#cleaned dataframe
+df_0626 <- read_excel(file.path(path_svc_0626, "S3A.06250626.2019.SVC.xlsx"),sheet=1)
+names(df_0626)[1] <- "OBS"
+#svc files
+svc_0626 <- spectrolab::read_spectra(path_svc_0626, format = "sig")
+
+#reflectance matrix
+ref_0626 <- spectrolab::reflectance(svc_0626)
+#wavelength
+wavelen_0626 <- spectrolab::wavelengths(svc_0626)
+
+#change the order to make the spectral continuous
+wavelen_order <- order(wavelen_0626)
+wavelen_0626 <- wavelen_0626[wavelen_order]
+for(i in 1:dim(ref_0626)[1]){
+  ref_0626[i, ] <- ref_0626[i,wavelen_order]
+}
+
+#get the names
+files_0626 <- names(svc_0626)
+
+#create the Speclib
+speclib_0626 <- speclib(ref_0626, wavelen_0626)
+str(speclib_0626)
+
+#Mask
+#speclib_0626_masked <- speclib_0626
+#mask(speclib_0626_masked) <- c(1040, 1060, 1300, 1450)
+#par(mfrow = c(1,2))
+#plot(speclib_0626)
+#plot(speclib_0626_masked)
+##interpolate the masked window
+#speclib_0626_int <- interpolate.mask(speclib_0626_masked)
+#plot(speclib_0626_int)
+#speclib_0626 <- interpolate.mask(speclib_0626)
+#plot(speclib_0626)
+
+
+
+#plot default
+hsdar::plot(speclib_0626)
+
+#add SI (supplementary information) data
+SI(speclib_0626) <- data.frame("OBS" = 1:160)
+speclib_0626@SI
+#subset the spectral using Plants IDs
+speclib_0626 <- subset(speclib_0626, OBS %in% df_0626$OBS)
+
+
+#combine with the df
+SI(speclib_0626) <- merge(SI(speclib_0626), df_0626, by = "OBS")
+
+#combine with the ground measurement
+names(SI(speclib_0626))
+names(SI(speclib_0626)) <- c("OBS","Plot","Treatment","Plant","p532","p570","PRI")
+head(SI(speclib_0626)) 
+SI_0626 <- merge(SI(speclib_0626), subset(phys_PL, Date=="2019-06-28"), by = c("Treatment","Plot","Plant"), sort = FALSE)
+speclib_0626 <- subset(speclib_0626, OBS %in% SI_0626$OBS)
+speclib_0626
+SI(speclib_0626) <- SI_0626
+head(SI(speclib_0626))
+
+#filter & smooth 
+plot(speclib_0626)
+speclib_0626_sg <- noiseFiltering(speclib_0626, method = "sgolay", n = 11)
+plot(speclib_0626_sg, main = "06-26", ylim = c(0,0.8))
+#speclib_0626_lo <- noiseFiltering(speclib_0626, method = "lowess", f = 0.01)
+
+#Change to numeric
+SI(speclib_0626_sg)$SWP <- as.numeric(as.character(SI(speclib_0626_sg)$SWP))
+SI(speclib_0626_sg)$CHL <- as.numeric(as.character(SI(speclib_0626_sg)$CHL))
+
+```
+##0717
+```{r}
+path_svc_0717 <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/dataframes/SVC/20190717"
+#cleaned dataframe
+df_0717 <- read_excel(file.path(path_svc_0717, "S4.07170718.2019.SVC.xlsx"),sheet=1)
+
+#svc files
+svc_0717 <- spectrolab::read_spectra(path_svc_0717, format = "sig")
+
+#reflectance matrix
+ref_0717 <- spectrolab::reflectance(svc_0717)
+#wavelength
+wavelen_0717 <- spectrolab::wavelengths(svc_0717)
+
+#change the order to make the spectral continuous
+wavelen_order <- order(wavelen_0717)
+wavelen_0717 <- wavelen_0717[wavelen_order]
+for(i in 1:dim(ref_0717)[1]){
+  ref_0717[i, ] <- ref_0717[i,wavelen_order]
+}
+
+#get the names
+files_0717 <- names(svc_0717)
+
+#create the Speclib
+speclib_0717 <- speclib(ref_0717, wavelen_0717)
+str(speclib_0717)
+
+#Mask
+#speclib_0717_masked <- speclib_0717
+#mask(speclib_0717_masked) <- c(1040, 1060, 1300, 1450)
+#par(mfrow = c(1,2))
+#plot(speclib_0717)
+#plot(speclib_0717_masked)
+##interpolate the masked window
+#speclib_0717_int <- interpolate.mask(speclib_0717_masked)
+#plot(speclib_0717_int)
+#speclib_0717 <- interpolate.mask(speclib_0717)
+#plot(speclib_0717)
+
+
+
+#plot default
+hsdar::plot(speclib_0717)
+
+#add SI (supplementary information) data
+SI(speclib_0717) <- data.frame("OBS" = 1:161)
+speclib_0717@SI
+#subset the spectral using Plants IDs
+speclib_0717 <- subset(speclib_0717, OBS %in% df_0717$OBS)
+
+
+#combine with the df
+SI(speclib_0717) <- merge(SI(speclib_0717), df_0717, by = "OBS")
+
+#combine with the ground measurement
+names(SI(speclib_0717))
+names(SI(speclib_0717)) <- c("OBS","Block","Treatment","Plot","Plant","p532","p570","PRI")
+head(SI(speclib_0717)) 
+
+SI_0717 <- merge(SI(speclib_0717), subset(phys_PL, Date=="2019-07-17"), by = c("Treatment","Plot","Plant"), sort = FALSE)
+speclib_0717 <- subset(speclib_0717, OBS %in% SI_0717$OBS)
+speclib_0717
+SI(speclib_0717) <- SI_0717
+
+
+#filter & smooth 
+plot(speclib_0717)
+speclib_0717_sg <- noiseFiltering(speclib_0717, method = "sgolay", n = 11)
+plot(speclib_0717_sg, main = "07-17", ylim = c(0,0.8))
+#speclib_0717_lo <- noiseFiltering(speclib_0717, method = "lowess", f = 0.01)
+
+SI(speclib_0717_sg)$SWP <- as.numeric(as.character(SI(speclib_0717_sg)$SWP))
+SI(speclib_0717_sg)$CHL <- as.numeric(as.character(SI(speclib_0717_sg)$CHL))
+
+```
+##0725
+```{r}
+path_svc_0725 <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/dataframes/SVC/20190725"
+#cleaned dataframe
+df_0725 <- read_excel(file.path(path_svc_0725, "S5.07250726.2019.SVC.xlsx"),sheet=1)
+
+#svc files
+svc_0725 <- spectrolab::read_spectra(path_svc_0725, format = "sig")
+
+#reflectance matrix
+ref_0725 <- spectrolab::reflectance(svc_0725)
+#wavelength
+wavelen_0725 <- spectrolab::wavelengths(svc_0725)
+
+#change the order to make the spectral continuous
+wavelen_order <- order(wavelen_0725)
+wavelen_0725 <- wavelen_0725[wavelen_order]
+for(i in 1:dim(ref_0725)[1]){
+  ref_0725[i, ] <- ref_0725[i,wavelen_order]
+}
+
+#get the names
+files_0725 <- names(svc_0725)
+
+#create the Speclib
+speclib_0725 <- speclib(ref_0725, wavelen_0725)
+str(speclib_0725)
+
+#Mask
+#speclib_0725_masked <- speclib_0725
+#mask(speclib_0725_masked) <- c(1040, 1060, 1300, 1450)
+#par(mfrow = c(1,2))
+#plot(speclib_0725)
+#plot(speclib_0725_masked)
+##interpolate the masked window
+#speclib_0725_int <- interpolate.mask(speclib_0725_masked)
+#plot(speclib_0725_int)
+#speclib_0725 <- interpolate.mask(speclib_0725)
+#plot(speclib_0725)
+
+
+
+#plot default
+hsdar::plot(speclib_0725)
+
+#add SI (supplementary information) data
+SI(speclib_0725) <- data.frame("OBS" = 1:160)
+speclib_0725@SI
+#subset the spectral using Plants IDs
+speclib_0725 <- subset(speclib_0725, OBS %in% df_0725$OBS)
+
+
+#combine with the df
+SI(speclib_0725) <- merge(SI(speclib_0725), df_0725, by = "OBS")
+
+#combine with the ground measurement
+names(SI(speclib_0725))
+names(SI(speclib_0725)) <- c("OBS","Block","Treatment","Plot","Plant","p532","p570","PRI")
+head(SI(speclib_0725)) 
+
+SI_0725 <- merge(SI(speclib_0725), subset(phys_PL, Date=="2019-07-25"), by = c("Treatment","Plot","Plant"), sort = FALSE)
+speclib_0725 <- subset(speclib_0725, OBS %in% SI_0725$OBS)
+speclib_0725
+SI(speclib_0725) <- SI_0725
+
+
+#filter & smooth 
+plot(speclib_0725)
+speclib_0725_sg <- noiseFiltering(speclib_0725, method = "sgolay", n = 11)
+plot(speclib_0725_sg, main = "07-25", ylim = c(0,0.8))
+#speclib_0725_lo <- noiseFiltering(speclib_0725, method = "lowess", f = 0.01)
+
+
+SI(speclib_0725_sg)$SWP <- as.numeric(as.character(SI(speclib_0725_sg)$SWP))
+SI(speclib_0725_sg)$CHL <- as.numeric(as.character(SI(speclib_0725_sg)$CHL))
+
+```
+
+##0802
+```{r}
+path_svc_0802 <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/dataframes/SVC/20190802"
+#cleaned dataframe
+df_0802 <- read_excel(file.path(path_svc_0802, "S6.0801.2019.SVC.xlsx"),sheet=2)
+
+#svc files
+svc_0802 <- spectrolab::read_spectra(path_svc_0802, format = "sig")
+
+#reflectance matrix
+ref_0802 <- spectrolab::reflectance(svc_0802)
+#wavelength
+wavelen_0802 <- spectrolab::wavelengths(svc_0802)
+
+#change the order to make the spectral continuous
+wavelen_order <- order(wavelen_0802)
+wavelen_0802 <- wavelen_0802[wavelen_order]
+for(i in 1:dim(ref_0802)[1]){
+  ref_0802[i, ] <- ref_0802[i,wavelen_order]
+}
+
+#get the names
+files_0802 <- names(svc_0802)
+
+#create the Speclib
+speclib_0802 <- speclib(ref_0802, wavelen_0802)
+str(speclib_0802)
+
+#Mask
+#speclib_0802_masked <- speclib_0802
+#mask(speclib_0802_masked) <- c(1040, 1060, 1300, 1450)
+#par(mfrow = c(1,2))
+#plot(speclib_0802)
+#plot(speclib_0802_masked)
+##interpolate the masked window
+#speclib_0802_int <- interpolate.mask(speclib_0802_masked)
+#plot(speclib_0802_int)
+#speclib_0802 <- interpolate.mask(speclib_0802)
+#plot(speclib_0802)
+
+
+
+#plot default
+hsdar::plot(speclib_0802)
+
+#add SI (supplementary information) data
+SI(speclib_0802) <- data.frame("OBS" = 1:161)
+speclib_0802@SI
+#subset the spectral using Plants IDs
+speclib_0802 <- subset(speclib_0802, OBS %in% df_0802$OBS)
+
+
+#combine with the df
+SI(speclib_0802) <- merge(SI(speclib_0802), df_0802, by = "OBS")
+
+#combine with the ground measurement
+names(SI(speclib_0802))
+names(SI(speclib_0802)) <- c("OBS","Block","Treatment","Plot","Plant","p532","p570","PRI")
+head(SI(speclib_0802)) 
+
+SI_0802 <- merge(SI(speclib_0802), subset(phys_PL, Date=="2019-06-28"), by = c("Treatment","Plot","Plant"), sort = FALSE)
+speclib_0802 <- subset(speclib_0802, OBS %in% SI_0802$OBS)
+speclib_0802
+SI(speclib_0802) <- SI_0802
+
+
+#filter & smooth 
+plot(speclib_0802)
+speclib_0802_sg <- noiseFiltering(speclib_0802, method = "sgolay", n = 11)
+plot(speclib_0802_sg, main = "08-02", ylim = c(0,0.8))
+#speclib_0802_lo <- noiseFiltering(speclib_0802, method = "lowess", f = 0.01)
+
+SI(speclib_0802_sg)$SWP <- as.numeric(as.character(SI(speclib_0802_sg)$SWP))
+SI(speclib_0802_sg)$CHL <- as.numeric(as.character(SI(speclib_0802_sg)$CHL))
+
+```
+
+#Plot spectral curve by different dates and treatments
+##Date by date
+```{r}
+#0612
+##all spectral
+plot(subset(speclib_0612_sg, Treatment == "CONTROL WW"), FUN = "mean", col = "darkred", ylim = c(0,0.8), main = "06-12")
+plot(subset(speclib_0612_sg, Treatment == "CONTROL DDD"), FUN = "mean", col = "darkgreen",new = FALSE)
+plot(subset(speclib_0612_sg, Treatment == "BAYER 16 (SOIL) WW"), FUN = "mean", col = "darkblue",new = FALSE)
+legend("topright", legend = c("CONTROL WW","CONTROL DDD","BAYER 16 (SOIL) WW"), col = c("darkred","darkgreen","darkblue"), lwd = 1)
+##510-580
+plot(subset(speclib_0612_sg, Treatment == "CONTROL WW"), FUN = "mean", col = "darkred", main = "06-12", xlim = c(510, 580), ylim = c(0,0.1))
+plot(subset(speclib_0612_sg, Treatment == "CONTROL DDD"), FUN = "mean", col = "darkgreen",new = FALSE, xlim = c(510, 580))
+plot(subset(speclib_0612_sg, Treatment == "BAYER 16 (SOIL) WW"), FUN = "mean", col = "darkblue",new = FALSE, xlim = c(510, 580))
+legend("topright", legend = c("CONTROL WW","CONTROL DDD","BAYER 16 (SOIL) WW"), col = c("darkred","darkgreen","darkblue"), lwd = 1)
+
+
+#0626
+plot(subset(speclib_0626_sg, Treatment == "CONTROL WW"), FUN = "mean", col = "darkred", ylim = c(0,0.8), main = "06-26")
+plot(subset(speclib_0626_sg, Treatment == "CONTROL DDD"), FUN = "mean", col = "darkgreen",new = FALSE)
+plot(subset(speclib_0626_sg, Treatment == "BAYER 16 (SOIL) WW"), FUN = "mean", col = "darkblue",new = FALSE)
+legend("topright", legend = c("CONTROL WW","CONTROL DDD","BAYER 16 (SOIL) WW"), col = c("darkred","darkgreen","darkblue"), lwd = 1)
+
+#0717
+plot(subset(speclib_0717_sg, Treatment == "CONTROL WW"), FUN = "mean", col = "darkred", ylim = c(0,0.8), main = "07-17")
+plot(subset(speclib_0717_sg, Treatment == "CONTROL DDD"), FUN = "mean", col = "darkgreen",new = FALSE)
+plot(subset(speclib_0717_sg, Treatment == "BAYER 16 (SOIL) WW"), FUN = "mean", col = "darkblue",new = FALSE)
+legend("topright", legend = c("CONTROL WW","CONTROL DDD","BAYER 16 (SOIL) WW"), col = c("darkred","darkgreen","darkblue"), lwd = 1)
+##510-580nm
+plot(subset(speclib_0717_sg, Treatment == "CONTROL WW"), FUN = "mean", col = "darkred", main = "07-17", xlim = c(510, 580), ylim = c(0.03,0.1))
+plot(subset(speclib_0717_sg, Treatment == "CONTROL DDD"), FUN = "mean", col = "darkgreen",new = FALSE, xlim = c(510, 580))
+plot(subset(speclib_0717_sg, Treatment == "BAYER 16 (SOIL) WW"), FUN = "mean", col = "darkblue",new = FALSE, xlim = c(510, 580))
+legend("topright", legend = c("CONTROL WW","CONTROL DDD","BAYER 16 (SOIL) WW"), col = c("darkred","darkgreen","darkblue"), lwd = 1)
+##510-580nm
+plot(subset(speclib_0717_sg, Treatment == "CONTROL WW"), FUN = "mean", col = "darkred", main = "07-17", xlim = c(510, 580), ylim = c(0.03,0.1))
+plot(subset(speclib_0717_sg, Treatment == "CONTROL DDD"), FUN = "mean", col = "darkgreen",new = FALSE, xlim = c(510, 580))
+plot(subset(speclib_0717_sg, Treatment == "BAYER 16 (SOIL) WW"), FUN = "mean", col = "darkblue",new = FALSE, xlim = c(510, 580))
+legend("topright", legend = c("CONTROL WW","CONTROL DDD","BAYER 16 (SOIL) WW"), col = c("darkred","darkgreen","darkblue"), lwd = 1)
+#710-780
+plot(subset(speclib_0717_sg, Treatment == "CONTROL WW"), FUN = "mean", col = "darkred", main = "07-17", xlim = c(710, 780))
+plot(subset(speclib_0717_sg, Treatment == "CONTROL DDD"), FUN = "mean", col = "darkgreen",new = FALSE, xlim = c(710, 780))
+plot(subset(speclib_0717_sg, Treatment == "BAYER 16 (SOIL) WW"), FUN = "mean", col = "darkblue",new = FALSE, xlim = c(710, 780))
+legend("bottomright", legend = c("CONTROL WW","CONTROL DDD","BAYER 16 (SOIL) WW"), col = c("darkred","darkgreen","darkblue"), lwd = 1)
+#910-980
+plot(subset(speclib_0717_sg, Treatment == "CONTROL WW"), FUN = "mean", col = "darkred", main = "07-17", xlim = c(890, 980),ylim = c(0.45,0.7))
+plot(subset(speclib_0717_sg, Treatment == "CONTROL DDD"), FUN = "mean", col = "darkgreen",new = FALSE, xlim = c(890, 980))
+plot(subset(speclib_0717_sg, Treatment == "BAYER 16 (SOIL) WW"), FUN = "mean", col = "darkblue",new = FALSE, xlim = c(890, 980))
+legend("topright", legend = c("CONTROL WW","CONTROL DDD","BAYER 16 (SOIL) WW"), col = c("darkred","darkgreen","darkblue"), lwd = 1)
+#1350-1500
+plot(subset(speclib_0717_sg, Treatment == "CONTROL WW"), FUN = "mean", col = "darkred", main = "07-17", xlim = c(1350, 1400),ylim = c(0.2, 0.32))
+plot(subset(speclib_0717_sg, Treatment == "CONTROL DDD"), FUN = "mean", col = "darkgreen",new = FALSE, xlim = c(1350, 1400))
+plot(subset(speclib_0717_sg, Treatment == "BAYER 16 (SOIL) WW"), FUN = "mean", col = "darkblue",new = FALSE, xlim = c(1350, 1400))
+legend("topright", legend = c("CONTROL WW","CONTROL DDD","BAYER 16 (SOIL) WW"), col = c("darkred","darkgreen","darkblue"), lwd = 1)
+#1480-1500
+plot(subset(speclib_0717_sg, Treatment == "CONTROL WW"), FUN = "mean", col = "darkred", main = "07-17", xlim = c(1480, 1500),ylim =c(0.05,0.15))
+plot(subset(speclib_0717_sg, Treatment == "CONTROL DDD"), FUN = "mean", col = "darkgreen",new = FALSE, xlim = c(1480, 1500))
+plot(subset(speclib_0717_sg, Treatment == "BAYER 16 (SOIL) WW"), FUN = "mean", col = "darkblue",new = FALSE, xlim = c(1480, 1500))
+legend("topright", legend = c("CONTROL WW","CONTROL DDD","BAYER 16 (SOIL) WW"), col = c("darkred","darkgreen","darkblue"), lwd = 1)
+
+
+
+#0725
+plot(subset(speclib_0725_sg, Treatment == "CONTROL WW"), FUN = "mean", col = "darkred", ylim = c(0,0.8), main = "07-25")
+plot(subset(speclib_0725_sg, Treatment == "CONTROL DDD"), FUN = "mean", col = "darkgreen",new = FALSE)
+plot(subset(speclib_0725_sg, Treatment == "BAYER 16 (SOIL) WW"), FUN = "mean", col = "darkblue",new = FALSE)
+legend("topright", legend = c("CONTROL WW","CONTROL DDD","BAYER 16 (SOIL) WW"), col = c("darkred","darkgreen","darkblue"), lwd = 1)
+plot(subset(speclib_0725_sg, Treatment == "CONTROL WW"), FUN = "mean", col = "darkred", main = "07-25", xlim = c(510, 580), ylim = c(0.03,0.1))
+plot(subset(speclib_0725_sg, Treatment == "CONTROL DDD"), FUN = "mean", col = "darkgreen",new = FALSE, xlim = c(510, 580))
+plot(subset(speclib_0725_sg, Treatment == "BAYER 16 (SOIL) WW"), FUN = "mean", col = "darkblue",new = FALSE, xlim = c(510, 580))
+legend("topright", legend = c("CONTROL WW","CONTROL DDD","BAYER 16 (SOIL) WW"), col = c("darkred","darkgreen","darkblue"), lwd = 1)
+
+
+#0802
+plot(subset(speclib_0802_sg, Treatment == "CONTROL WW"), FUN = "mean", col = "darkred", ylim = c(0,0.8), main = "08-02")
+plot(subset(speclib_0802_sg, Treatment == "CONTROL DDD"), FUN = "mean", col = "darkgreen",new = FALSE)
+plot(subset(speclib_0802_sg, Treatment == "BAYER 16 (SOIL) WW"), FUN = "mean", col = "darkblue",new = FALSE)
+legend("topright", legend = c("CONTROL WW","CONTROL DDD","BAYER 16 (SOIL) WW"), col = c("darkred","darkgreen","darkblue"), lwd = 1)
+plot(subset(speclib_0802_sg, Treatment == "CONTROL WW"), FUN = "mean", col = "darkred", main = "08-02", xlim = c(510, 580), ylim = c(0.03,0.1))
+plot(subset(speclib_0802_sg, Treatment == "CONTROL DDD"), FUN = "mean", col = "darkgreen",new = FALSE, xlim = c(510, 580))
+plot(subset(speclib_0802_sg, Treatment == "BAYER 16 (SOIL) WW"), FUN = "mean", col = "darkblue",new = FALSE, xlim = c(510, 580))
+legend("topright", legend = c("CONTROL WW","CONTROL DDD","BAYER 16 (SOIL) WW"), col = c("darkred","darkgreen","darkblue"), lwd = 1)
+#910-980
+plot(subset(speclib_0802_sg, Treatment == "CONTROL WW"), FUN = "mean", col = "darkred", main = "08-02", xlim = c(890, 980),ylim = c(0.4,0.6))
+plot(subset(speclib_0802_sg, Treatment == "CONTROL DDD"), FUN = "mean", col = "darkgreen",new = FALSE, xlim = c(890, 980))
+plot(subset(speclib_0802_sg, Treatment == "BAYER 16 (SOIL) WW"), FUN = "mean", col = "darkblue",new = FALSE, xlim = c(890, 980))
+legend("topright", legend = c("CONTROL WW","CONTROL DDD","BAYER 16 (SOIL) WW"), col = c("darkred","darkgreen","darkblue"), lwd = 1)
+
+
+```
+##Same treatment different dates
+```{r}
+plot(subset(speclib_0717_sg, Treatment == "CONTROL DDD"), FUN = "mean", lty = 1, ylim = c(0,0.8), main = "CONTROL DDD")
+plot(subset(speclib_0725_sg, Treatment == "CONTROL DDD"), FUN = "mean", lty = 5 ,new = FALSE)
+plot(subset(speclib_0802_sg, Treatment == "CONTROL DDD"), FUN = "mean",lty = 4,new = FALSE)
+legend("topright", legend = c("07-17","07-25","08-02"), lty = c(1,5,4), lwd = 1)
+
+plot(subset(speclib_0717_sg, Treatment == "CONTROL DDD"), FUN = "mean", lty = 1, main = "CONTROL DDD", xlim = c(510,580),ylim =c(0.03,0.1))
+plot(subset(speclib_0725_sg, Treatment == "CONTROL DDD"), FUN = "mean", lty = 5 ,new = FALSE, xlim = c(510,580))
+plot(subset(speclib_0802_sg, Treatment == "CONTROL DDD"), FUN = "mean",lty = 4,new = FALSE, xlim = c(510,580))
+legend("topright", legend = c("07-17","07-25","08-02"), lty = c(1,5,4), lwd = 1)
+
+#510-580
+plot(subset(speclib_0717_sg, Treatment == "CONTROL DDD"), FUN = "mean", lty = 1, main = "CONTROL DDD", xlim = c(510,580),ylim =c(0.03,0.1))
+plot(subset(speclib_0725_sg, Treatment == "CONTROL DDD"), FUN = "mean", lty = 5 ,new = FALSE, xlim = c(510,580))
+plot(subset(speclib_0802_sg, Treatment == "CONTROL DDD"), FUN = "mean",lty = 4,new = FALSE, xlim = c(510,580))
+legend("topright", legend = c("07-17","07-25","08-02"), lty = c(1,5,4), lwd = 1)
+
+#890-980
+plot(subset(speclib_0717_sg, Treatment == "CONTROL DDD"), FUN = "mean", lty = 1, main = "CONTROL DDD", xlim = c(890,980),ylim = c(0.4,0.7))
+plot(subset(speclib_0725_sg, Treatment == "CONTROL DDD"), FUN = "mean", lty = 5 ,new = FALSE, xlim = c(890,980))
+plot(subset(speclib_0802_sg, Treatment == "CONTROL DDD"), FUN = "mean",lty = 4,new = FALSE, xlim = c(890,980))
+legend("topright", legend = c("07-17","07-25","08-02"), lty = c(1,5,4), lwd = 1)
+
+#710-780
+plot(subset(speclib_0717_sg, Treatment == "CONTROL DDD"), FUN = "mean", lty = 1, main = "CONTROL DDD", xlim = c(710,780),ylim = c(0.1,0.6))
+plot(subset(speclib_0725_sg, Treatment == "CONTROL DDD"), FUN = "mean", lty = 5 ,new = FALSE, xlim = c(710,780))
+plot(subset(speclib_0802_sg, Treatment == "CONTROL DDD"), FUN = "mean",lty = 4,new = FALSE, xlim = c(710,780))
+legend("bottomright", legend = c("07-17","07-25","08-02"), lty = c(1,5,4), lwd = 1)
+
+#1350-1500
+plot(subset(speclib_0717_sg, Treatment == "CONTROL DDD"), FUN = "mean", lty = 1, main = "CONTROL DDD", xlim = c(1350,1500),ylim = c(0,0.3))
+plot(subset(speclib_0725_sg, Treatment == "CONTROL DDD"), FUN = "mean", lty = 5 ,new = FALSE, xlim = c(1350,1500))
+plot(subset(speclib_0802_sg, Treatment == "CONTROL DDD"), FUN = "mean",lty = 4,new = FALSE, xlim = c(1350,1500))
+legend("bottomright", legend = c("07-17","07-25","08-02"), lty = c(1,5,4), lwd = 1)
+
+#1350-1500
+plot(subset(speclib_0717_sg, Treatment == "CONTROL WW"), FUN = "mean", col = "darkred", main = "07-17", xlim = c(1350, 1400),ylim = c(0.2, 0.32))
+plot(subset(speclib_0717_sg, Treatment == "CONTROL DDD"), FUN = "mean", col = "darkgreen",new = FALSE, xlim = c(1350, 1400))
+plot(subset(speclib_0717_sg, Treatment == "BAYER 16 (SOIL) WW"), FUN = "mean", col = "darkblue",new = FALSE, xlim = c(1350, 1400))
+legend("topright", legend = c("CONTROL WW","CONTROL DDD","BAYER 16 (SOIL) WW"), col = c("darkred","darkgreen","darkblue"), lwd = 1)
+#1480-1500
+plot(subset(speclib_0717_sg, Treatment == "CONTROL WW"), FUN = "mean", col = "darkred", main = "07-17", xlim = c(1480, 1500),ylim =c(0.05,0.15))
+plot(subset(speclib_0717_sg, Treatment == "CONTROL DDD"), FUN = "mean", col = "darkgreen",new = FALSE, xlim = c(1480, 1500))
+plot(subset(speclib_0717_sg, Treatment == "BAYER 16 (SOIL) WW"), FUN = "mean", col = "darkblue",new = FALSE, xlim = c(1480, 1500))
+legend("topright", legend = c("CONTROL WW","CONTROL DDD","BAYER 16 (SOIL) WW"), col = c("darkred","darkgreen","darkblue"), lwd = 1)
+
+```
+
+#VI from hyperspectral data
+##Vegetation Indices from Hsdar package
+```{r}
+avl <- vegindex()
+vis_0612 <- vegindex(speclib_0612_sg, index = avl)
+vis_0626 <- vegindex(speclib_0626_sg, index = avl)
+vis_0717 <- vegindex(speclib_0717_sg, index = avl)
+vis_0725 <- vegindex(speclib_0725_sg, index = avl)
+vis_0802 <- vegindex(speclib_0802_sg, index = avl)
+```
+##rededge parameter
+```{r}
+rd_0612 <- rededge(speclib_0612_sg)
+rd_0626 <- rededge(speclib_0626_sg)
+rd_0717 <- rededge(speclib_0717_sg)
+rd_0725 <- rededge(speclib_0725_sg)
+rd_0802 <- rededge(speclib_0802_sg)
+```
+##Cor with VIs
+```{r}
+#0612
+cortest_vis_0612 <- data.frame("r"=rep(NA, 115),"p-value"=rep(NA, 115),"VI"=names(vis_0612)[1:115])
+for(i in 1:115){
+  cortest_vis_0612[i,1] <- cor.test(vis_0612[,i], SI(speclib_0612_sg)$SWP)$estimate
+  cortest_vis_0612[i,2] <- cor.test(vis_0612[,i], SI(speclib_0612_sg)$SWP)$p.value
+}
+max(cortest_vis_0612$r)
+min(cortest_vis_0612$p)
+cortest_vis_0612 <- cortest_vis_0612[order(cortest_vis_0612$r, decreasing = TRUE),]
+head(cortest_vis_0612, 10)
+xtable(head(cortest_vis_0612, 10))
+
+#0626
+cortest_vis_0626 <- data.frame("r"=rep(NA, 115),"p-value"=rep(NA, 115),"VI"=names(vis_0612)[1:115])
+for(i in 1:115){
+  cortest_vis_0626[i,1] <- cor.test(vis_0626[,i], SI(speclib_0626_sg)$SWP)$estimate
+  cortest_vis_0626[i,2] <- cor.test(vis_0626[,i], SI(speclib_0626_sg)$SWP)$p.value
+}
+max(cortest_vis_0626$r)
+min(cortest_vis_0626$p)
+cortest_vis_0626 <- cortest_vis_0626[order(cortest_vis_0626$r, decreasing = TRUE),]
+head(cortest_vis_0626, 10)
+xtable(head(cortest_vis_0626, 10))
+
+#0717
+cortest_vis_0717 <- data.frame("r"=rep(NA, 115),"p-value"=rep(NA, 115),"VI"=names(vis_0612)[1:115])
+for(i in 1:115){
+  cortest_vis_0717[i,1] <- cor.test(vis_0717[,i], SI(speclib_0717_sg)$SWP)$estimate
+  cortest_vis_0717[i,2] <- cor.test(vis_0717[,i], SI(speclib_0717_sg)$SWP)$p.value
+}
+max(cortest_vis_0717$r)
+min(cortest_vis_0717$p)
+cortest_vis_0717 <- cortest_vis_0717[order(cortest_vis_0717$r, decreasing = TRUE),]
+head(cortest_vis_0717, 10)
+xtable(head(cortest_vis_0717, 10))
+
+#0725
+cortest_vis_0725 <- data.frame("r"=rep(NA, 115),"p-value"=rep(NA, 115),"VI"=names(vis_0612)[1:115])
+for(i in 1:115){
+  cortest_vis_0725[i,1] <- cor.test(vis_0725[,i], SI(speclib_0725_sg)$SWP)$estimate
+  cortest_vis_0725[i,2] <- cor.test(vis_0725[,i], SI(speclib_0725_sg)$SWP)$p.value
+}
+max(cortest_vis_0725$r)
+min(cortest_vis_0725$p)
+cortest_vis_0725 <- cortest_vis_0725[order(cortest_vis_0725$r, decreasing = TRUE),]
+head(cortest_vis_0725, 10)
+xtable(head(cortest_vis_0725, 10))
+
+#0802
+cortest_vis_0802 <- data.frame("r"=rep(NA, 115),"p-value"=rep(NA, 115),"VI"=names(vis_0612)[1:115])
+for(i in 1:115){
+  cortest_vis_0802[i,1] <- cor.test(vis_0802[,i], SI(speclib_0802_sg)$SWP)$estimate
+  cortest_vis_0802[i,2] <- cor.test(vis_0802[,i], SI(speclib_0802_sg)$SWP)$p.value
+}
+max(cortest_vis_0802$r)
+min(cortest_vis_0802$p)
+cortest_vis_0802 <- cortest_vis_0802[order(cortest_vis_0802$r, decreasing = TRUE),]
+head(cortest_vis_0802, 10)
+xtable(head(cortest_vis_0802, 10))
+
+```
+##SWP temporal change
+```{r}
+str(phys_PL)
+
+ggplot(subset(phys_PL, Treatment %in% c("BAYER 16 (SOIL) WW","CONTROL DDD","CONTROL WW")), aes(x = as.factor(Date) , y= -SWP, fill= Treatment)) + geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Stem Water Potential (Bars)") + scale_fill_tableau() + ggtitle("Stem Water Potential Seasonal Change")
+
+
+
+phys_PL$SWP <- as.numeric(as.character(phys_PL$SWP))
+ggplot(subset(phys_PL, Treatment %in% c("BAYER 16 (SOIL) WW","CONTROL DDD","CONTROL WW")), aes(x = Date, y = -SWP, color = Treatment)) + geom_point()+theme_light() + facet_wrap(~Treatment, nrow=3)
+
+ggplot(subset(phys_PL, Treatment %in% c("BAYER 16 (SOIL) WW","CONTROL DDD","CONTROL WW")), aes(x = Date, y = -SWP)) + geom_boxplot(aes(fill = Treatment))+theme_light() + facet_wrap(~Treatment, nrow=3)
+
+
+ggplot(subset(phys_PL, Treatment %in% c("BAYER 16 (SOIL) WW","CONTROL DDD","CONTROL WW")), aes(x = Date, y = -SWP, fill = Treatment)) + geom_boxplot()+theme_light()+facet_wrap(~Treatment, nrow = 3)
+
+qplot(x = Date, y = -SWP, data = subset(phys_PL, Treatment %in% c("BAYER 16 (SOIL) WW","CONTROL DDD","CONTROL WW")), geom = "boxplot", fill = Treatment)
+```
+##SWP vs VIs
+```{r}
+vis_0612 <- vegindex(speclib_0612_sg, index = avl)
+vis_0626 <- vegindex(speclib_0626_sg, index = avl)
+vis_0717 <- vegindex(speclib_0717_sg, index = avl)
+vis_0725 <- vegindex(speclib_0725_sg, index = avl)
+vis_0802 <- vegindex(speclib_0802_sg, index = avl)
+
+vis_0612 <- cbind(vis_0612, SI(speclib_0612_sg)[,c("Treatment","Plot","Plant","OBS","Block.x","SWP")])
+names(vis_0612)[120] <- "Block"
+vis_0612$Date <- as.Date("2019-06-12")
+vis_0626 <- cbind(vis_0626, SI(speclib_0626_sg)[,c("Treatment","Plot","Plant","OBS","Block","SWP")])
+names(vis_0626)
+vis_0626$Date <- as.Date("2019-06-26")
+vis_0717 <- cbind(vis_0717, SI(speclib_0717_sg)[,c("Treatment","Plot","Plant","OBS","Block.x","SWP")])
+names(vis_0717)[120] <- "Block"
+vis_0717$Date <- as.Date("2019-07-17")
+vis_0725 <- cbind(vis_0725, SI(speclib_0725_sg)[,c("Treatment","Plot","Plant","OBS","Block.x","SWP")])
+names(vis_0725)[120] <- "Block"
+vis_0725$Date <- as.Date("2019-07-25")
+vis_0802 <- cbind(vis_0802, SI(speclib_0802_sg)[,c("Treatment","Plot","Plant","OBS","Block.x","SWP")])
+names(vis_0802)[120] <- "Block"
+vis_0802$Date <- as.Date("2019-08-02")
+
+#combine
+vis_svc <- rbind(vis_0612, vis_0626, vis_0717, vis_0725, vis_0802)
+##remove 0612
+vis_svc2 <- rbind(vis_0626, vis_0717, vis_0725, vis_0802)
+vis_svc3 <- rbind(vis_0626, vis_0802)
+
+#all
+cortest_vis_svc <- data.frame("r"=rep(NA, 115), "p-value"=rep(NA, 115), "VI"= names(vis_svc)[1:115])
+for(i in 1:115){
+  cortest_vis_svc[i,1] <- cor.test(vis_svc[,i], vis_svc$SWP)$estimate
+  cortest_vis_svc[i,2] <- cor.test(vis_svc[,i], vis_svc$SWP)$p.value
+}
+cortest_vis_svc <- cortest_vis_svc[order(cortest_vis_svc$r, decreasing = TRUE),]
+head(cortest_vis_svc, 10)
+xtable(head(cortest_vis_svc, 10))
+#remove 0612
+cortest_vis_svc2 <- data.frame("r"=rep(NA, 115), "p-value"=rep(NA, 115), "VI"= names(vis_svc2)[1:115])
+for(i in 1:115){
+  cortest_vis_svc2[i,1] <- cor.test(vis_svc2[,i], vis_svc2$SWP)$estimate
+  cortest_vis_svc2[i,2] <- cor.test(vis_svc2[,i], vis_svc2$SWP)$p.value
+}
+cortest_vis_svc2 <- cortest_vis_svc2[order(cortest_vis_svc2$r, decreasing = TRUE),]
+head(cortest_vis_svc2, 10)
+xtable(head(cortest_vis_svc2, 10))
+
+ggplot(vis_svc2, aes(x = Datt8, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+theme_classic()+geom_smooth(method = "lm")
+
+ggplot(vis_svc2, aes(x = Datt7, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+theme_classic()+geom_smooth()
+ggplot(vis_svc2, aes(x = REP_Li, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+theme_classic()+geom_smooth()
+ggplot(vis_svc2, aes(x = mREIP, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+theme_classic()+geom_smooth()
+ggplot(vis_svc2, aes(x = Gitelson, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+theme_classic()+geom_smooth()
+ggplot(vis_svc2, aes(x = Datt4, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+theme_classic()+geom_smooth(method = "lm")
+
+
+ggplot(vis_svc2, aes(x = MPRI, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+theme_classic()+geom_smooth(method = "lm")
+ggplot(vis_svc, aes(x = PRI, y = -SWP)) + geom_point()+theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "none")+geom_smooth(method = "lm") + facet_wrap(~Date, scale = "free")
+ggplot(vis_svc2, aes(x = PRI_norm, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+theme_classic()+geom_smooth(method = "lm")
+ggplot(vis_svc2, aes(x = PRI*CI2, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+theme_classic()+geom_smooth(method = "lm")
+
+```
+##PRI from svc and PRI from 
+```{r}
+ggplot(vis_svc, aes(x = PRI, y = SWP)) + geom_point()
+
+```
+
+
+#Resample to macaw wavelengths
+```{r}
+wavelen_macaw <- c(450, 480, 530, 550, 570, 670, 700, 720, 740, 800, 900, 970)
+get.sensor.characteristics(0)
+
+spec_0612_macaw <- spectralResampling(speclib_0612_sg, )
+```
+
+#Merge 8 samples together
+```{r}
+
+aggregate(vis_svc)
+```
+
+#cross comparison
+```{r}
+unique(vis_svc$Date)
+unique(vis_svc2$Date)
+
+for(i in 1:dim(vis_svc3)[1]){
+  if(vis_svc3[i,]$Date == "2019-06-26"){
+    vis_svc3[i,]$Date = "2019-06-28"
+  }
+}
+
+cross_comp3 <- merge(flagmean_macaw_phys, vis_svc3, by = c("Date","Treatment","Plant","Plot","Block"))
+dim(cross_comp3)
+ggplot(cross_comp3, aes(x= pri, y = PRI))+geom_point(size =2, aes(color = as.factor(Date)))+ theme_pubr(border = TRUE, legend = "right", base_size = 14, base_family = "serif") + theme(legend.title = element_blank()) + xlab("PRI from UAV") + ylab("PRI from SVC") + xlim(-0.06,0.01) + ylim(-0.06,0.01) + geom_abline(slope = 1, intercept = 0, color = "blue")+geom_smooth(method = "lm", se = FALSE, color = "red")
+
+ggplot(cross_comp3, aes(x= ndvi, y = NDVI.y))+geom_point(size =2, aes(color = as.factor(Date)))+ theme_pubr(border = TRUE, legend = "right", base_size = 14, base_family = "serif") + theme(legend.title = element_blank()) + xlab("NDVI from UAV") + ylab("NDVI from SVC") + geom_abline(slope = 1, intercept = 0, color = "blue")+geom_smooth(method = "lm", se = FALSE, color = "red")+ xlim(0.7,0.95) + ylim(0.7,0.95) 
+
+ggplot(cross_comp, aes(x = pri, y = PRIm.ma))+geom_point(size = 2,aes(color = as.factor(Date))) + theme_pubr(border = TRUE, legend = "right", base_size = 14, base_family = "serif") + theme(legend.title = element_blank()) + xlab("PRI from UAV") + ylab("PRI from Stand") + xlim(-0.08,0.025) + ylim(-0.08,0.025) + geom_abline(slope = 1, intercept = 0, color = "blue")+geom_smooth(method = "lm", se = FALSE, color = "red")
+
+
+cross_comp <- merge(rowflagmean_macaw_phys, df_PRI_weather_nona, by = c("Date","Treatment","Block"))
+
+```
+
