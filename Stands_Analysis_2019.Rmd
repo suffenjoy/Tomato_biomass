@@ -1543,6 +1543,32 @@ lm1 <- lm(-SWP~PRI_NDVI_scale, subset(gs_daily_swp, Date != "2019-05-31"))
 summary(lm1)
 cor(subset(gs_daily_swp, Date != "2019-05-31")$PRI_NDVI_scale, subset(gs_daily_swp, Date != "2019-05-31")$SWP)^2
 ```
+#Individual dates
+```{r}
+names(phys_weather_PRI)
+names(df_PRI_weather)
+unique(phys_weather_PRI$Date)
+
+temp_ls <- split(phys_weather_PRI, phys_weather_PRI$Date)
+for(i in 1:length(temp_ls)){
+ #print(cor(temp_ls[[i]]$SWP, temp_ls[[i]]$PRIm.ma)^2)
+ print(cor(temp_ls[[i]]$Cond, temp_ls[[i]]$PRIm.ma)^2)
+}
+
+ggplot(phys_weather_PRI, aes(x = PRIm.ma, y = -SWP)) + geom_point()+facet_wrap(~Date, scales = "free") + geom_smooth(method = "lm") + theme_pubr(base_family = "serif", base_size = 14, border = "TRUE") + xlab("PRI from Stand") + ylab("SWP")
+ggplot(phys_weather_PRI, aes(x = PRIm.ma, y = Cond)) + geom_point()+facet_wrap(~Date, scales = "free") + geom_smooth(method = "lm") + theme_pubr(base_family = "serif", base_size = 14, border = "TRUE") + xlab("PRI from Stand") + ylab("Stomatal Conductance")
+
+ggplot(phys_weather_PRI, aes(x = PRI.NDVI.ma, y = -SWP)) + geom_point()+facet_wrap(~Date, scales = "free") + geom_smooth(method = "lm") + theme_pubr(base_family = "serif", base_size = 14, border = "TRUE") + xlab("PRI/NDVI from Stand") + ylab("SWP")
+ggplot(phys_weather_PRI, aes(x = PRI_NDVI.ma_scale, y = -SWP)) + geom_point()+facet_wrap(~Date, scales = "free") + geom_smooth(method = "lm") + theme_pubr(base_family = "serif", base_size = 14, border = "TRUE") + xlab("PRIsc - NDVIsc from Stand") + ylab("SWP")
+ggplot(phys_weather_PRI, aes(x = PRImin-PRI0.ma, y = -SWP)) + geom_point()+facet_wrap(~Date, scales = "free") + geom_smooth(method = "lm") + theme_pubr(base_family = "serif", base_size = 14, border = "TRUE") + xlab("PRImin - PRI0 from Stand") + ylab("SWP")
+ggplot(phys_weather_PRI, aes(x = PRIdelta.ma, y = -SWP)) + geom_point()+facet_wrap(~Date, scales = "free") + geom_smooth(method = "lm") + theme_pubr(base_family = "serif", base_size = 14, border = "TRUE") + xlab("PRIdelta from Stand") + ylab("SWP")
+
+ggplot(phys_weather_PRI, aes(x = PRIdelta.ma, y = Cond)) + geom_point()+facet_wrap(~Date, scales = "free") + geom_smooth(method = "lm") + theme_pubr(base_family = "serif", base_size = 14, border = "TRUE") + xlab("PRIdelta from Stand") + ylab("Stomatal Conductance")
+
+
+```
+
+
 #Soil Moisture data 
 ```{r}
 path_stands <- "C:/Users/zt92/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/Stands"

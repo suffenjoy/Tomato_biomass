@@ -10,10 +10,449 @@ library(raster)
 library(ggplot2)
 library(dplyr)
 library(stringr)
+library(EBImage)
+library(readxl)
+library(caret)
+library(Metrics)
+library(tidyr)
+library(ggthemes)
+library(ggpubr)
+library(tidyr)
 ```
 
+#Shapefiles
+##From the server
+```{r}
+path_shp <- "/z0/zt92/Tomato_biomass/tomato_analysis_2019/shapefiles"
+#path_shp <- "Z:/CC_UCD_atRR/data2/UAV_MeeraeTomato/shapefiles"
+
+rows_2019 <- shapefile(file.path(path_shp, "tomato_rows_2019.shp"))
+
+
+
+rows_2019_cen1ft <- shapefile(file.path(path_shp, "tomato_rows_2019_cen1ft"))
+rows_2019_cen2ft <- shapefile(file.path(path_shp, "tomato_rows_2019_cen2ft"))
+rows_2019_cen3ft <- shapefile(file.path(path_shp, "tomato_rows_2019_cen3ft"))
+
+```
+##From laptop
+```{r}
+path_shp <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/shapefiles"
+#use the adjusted one
+flagbuff_2019 <- shapefile(file.path(path_shp, "flags_tomato_2019_adj_buffer.shp"))
+rows_2019 <- shapefile(file.path(path_shp, "tomato_rows_2019.shp"))
+rows_2019_cen1ft <- shapefile(file.path(path_shp, "tomato_rows_2019_cen1ft"))
+rows_2019_cen2ft <- shapefile(file.path(path_shp, "tomato_rows_2019_cen2ft"))
+rows_2019_cen3ft <- shapefile(file.path(path_shp, "tomato_rows_2019_cen3ft"))
+
+length(unique(flagbuff_2019$Row))
+length(unique(flagbuff_2019$Plot))
+unique(flagbuff_2019$Plot)
+unique(flagbuff_2019$Row)
+ls_flag <- split(flagbuff_2019, flagbuff_2019$Row)
+ls_flag[[1]]
+plot(ls_flag[[1]])
+```
+
+#Read Micasense imgs
+##function 
+```{r}
+read_uav <- function(path, stacks){
+  #read raster layer, and crop with the extent
+  uav_stacks <- raster::brick(file.path(path, stacks))
+  #rename the bands
+  names(uav_stacks) <- c("blue","green","red","rededge","nir","ndvi")
+  
+  return(uav_stacks)
+}
+```
+##read micasense 
+```{r}
+path_uav <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/UAV processed images"
+uav_061219 <- read_uav(path_uav, "tomato_061219_stacks2.tif")
+uav_062819 <- read_uav(path_uav, "tomato_062819_stacks2.tif")
+uav_071219 <- read_uav(path_uav, "tomato_071219_stacks.dat")
+uav_071719 <- read_uav(path_uav, "tomato_071719_stacks2.tif")
+uav_072619 <- read_uav(path_uav, "tomato_072619_stacks2.tif")
+uav_080219 <- read_uav(path_uav, "tomato_080219_stacks2.tif")
+uav_081019 <- read_uav(path_uav, "tomato_081019_stacks2.tif")
+uav_081519 <- read_uav(path_uav, "tomato_081519_stacks2.tif")
+uav_082219 <- read_uav(path_uav, "tomato_082219_stacks2.tif")
+```
+##crop to boundary and calculate NDVI histogram
+```{r}
+path_shp <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/shapefiles"
+BND <- shapefile(file.path(path_shp, "tomato_BND_2019.shp"))
+plot(BND)
+uav_061219 <- raster::crop(uav_061219, BND)
+values(uav_061219)[values(uav_061219) == -10000] <- NA
+uav_062819 <- raster::crop(uav_062819, BND)
+values(uav_062819)[values(uav_062819) == -10000] <- NA
+uav_071219 <- raster::crop(uav_071219, BND)
+values(uav_071219)[values(uav_071219) == -10000] <- NA
+uav_071719 <- raster::crop(uav_071719, BND)
+values(uav_071719)[values(uav_071719) == -10000] <- NA
+uav_072619 <- raster::crop(uav_072619, BND)
+values(uav_072619)[values(uav_072619) == -10000] <- NA
+uav_080219 <- raster::crop(uav_080219, BND)
+values(uav_080219)[values(uav_080219) == -10000] <- NA
+uav_081019 <- raster::crop(uav_081019, BND)
+values(uav_081019)[values(uav_081019) == -10000] <- NA
+uav_081519 <- raster::crop(uav_081519, BND)
+values(uav_081519)[values(uav_081519) == -10000] <- NA
+uav_082219 <- raster::crop(uav_082219, BND)
+values(uav_082219)[values(uav_082219) == -10000] <- NA
+
+
+#convert to array and apply Otsu method
+##0612
+temp_arr <- raster::as.array(uav_061219$ndvi)
+thr_uavndvi_061219 <- EBImage::otsu(temp_arr, range = c(min(temp_arr, na.rm = TRUE), max(temp_arr, na.rm = TRUE)), levels = 256)
+thr_uavndvi_061219  #0.5409
+hist(temp_arr, main = "UAV NDVI 061219", xlab = "NDVI")
+##0628
+temp_arr <- raster::as.array(uav_062819$ndvi)
+thr_uavndvi_062819 <- EBImage::otsu(temp_arr, range = c(min(temp_arr, na.rm = TRUE), max(temp_arr, na.rm = TRUE)), levels = 256)
+thr_uavndvi_062819  #0.5890
+hist(temp_arr, main = "UAV NDVI 062819", xlab = "NDVI")
+##0712
+temp_arr <- raster::as.array(uav_071219$ndvi)
+thr_uavndvi_071219 <- EBImage::otsu(temp_arr, range = c(min(temp_arr, na.rm = TRUE), max(temp_arr, na.rm = TRUE)), levels = 256)
+thr_uavndvi_071219  #0.5974
+hist(temp_arr, main = "UAV NDVI 071219", xlab = "NDVI")
+##0717
+temp_arr <- raster::as.array(uav_071719$ndvi)
+thr_uavndvi_071719 <- EBImage::otsu(temp_arr, range = c(min(temp_arr, na.rm = TRUE), max(temp_arr, na.rm = TRUE)), levels = 256)
+thr_uavndvi_071719  #0.5978
+hist(temp_arr, main = "UAV NDVI 071719", xlab = "NDVI")
+##0726
+temp_arr <- raster::as.array(uav_072619$ndvi)
+thr_uavndvi_072619 <- EBImage::otsu(temp_arr, range = c(min(temp_arr, na.rm = TRUE), max(temp_arr, na.rm = TRUE)), levels = 256)
+thr_uavndvi_072619  #0.5940
+hist(temp_arr, main = "UAV NDVI 072619", xlab = "NDVI")
+##0802
+temp_arr <- raster::as.array(uav_080219$ndvi)
+thr_uavndvi_080219 <- EBImage::otsu(temp_arr, range = c(min(temp_arr, na.rm = TRUE), max(temp_arr, na.rm = TRUE)), levels = 256)
+thr_uavndvi_080219  #0.6093
+hist(temp_arr, main = "UAV NDVI 080219", xlab = "NDVI")
+##0810
+temp_arr <- raster::as.array(uav_081019$ndvi)
+thr_uavndvi_081019 <- EBImage::otsu(temp_arr, range = c(min(temp_arr, na.rm = TRUE), max(temp_arr, na.rm = TRUE)), levels = 256)
+thr_uavndvi_081019  #0.5409
+hist(temp_arr, main = "UAV NDVI 081019", xlab = "NDVI")
+##0815
+temp_arr <- raster::as.array(uav_081519$ndvi)
+thr_uavndvi_081519 <- EBImage::otsu(temp_arr, range = c(min(temp_arr, na.rm = TRUE), max(temp_arr, na.rm = TRUE)), levels = 256)
+thr_uavndvi_081519  #0.5409
+hist(temp_arr, main = "UAV NDVI 081519", xlab = "NDVI")
+##0822
+temp_arr <- raster::as.array(uav_082219$ndvi)
+thr_uavndvi_082219 <- EBImage::otsu(temp_arr, range = c(min(temp_arr, na.rm = TRUE), max(temp_arr, na.rm = TRUE)), levels = 256)
+thr_uavndvi_082219  #0.5409
+hist(temp_arr, main = "UAV NDVI 082219", xlab = "NDVI")
+```
+
+##Vegetation Mask
+###Use a threshold as 0.6
+```{r}
+#vegetation mask
+veg_061219_ms_0.6 <- reclassify(uav_061219$ndvi, cbind(-Inf, 0.6, NA))
+veg_061219_ms_0.5 <- reclassify(uav_061219$ndvi, cbind(-Inf, 0.5, NA))
+veg_062819_ms_0.6 <- reclassify(uav_062819$ndvi, cbind(-Inf, 0.6, NA))
+veg_062819_ms_0.5 <- reclassify(uav_062819$ndvi, cbind(-Inf, 0.5, NA))
+veg_071219_ms_0.6 <- reclassify(uav_071219$ndvi, cbind(-Inf, 0.6, NA))
+veg_071219_ms_0.5 <- reclassify(uav_071219$ndvi, cbind(-Inf, 0.5, NA))
+veg_071719_ms_0.6 <- reclassify(uav_071719$ndvi, cbind(-Inf, 0.6, NA))
+veg_071719_ms_0.5 <- reclassify(uav_071719$ndvi, cbind(-Inf, 0.5, NA))
+veg_072619_ms_0.6 <- reclassify(uav_072619$ndvi, cbind(-Inf, 0.6, NA))
+veg_072619_ms_0.5 <- reclassify(uav_072619$ndvi, cbind(-Inf, 0.5, NA))
+veg_080219_ms_0.6 <- reclassify(uav_080219$ndvi, cbind(-Inf, 0.6, NA))
+veg_080219_ms_0.5 <- reclassify(uav_080219$ndvi, cbind(-Inf, 0.5, NA))
+veg_081019_ms_0.6 <- reclassify(uav_081019$ndvi, cbind(-Inf, 0.6, NA))
+veg_081019_ms_0.5 <- reclassify(uav_081019$ndvi, cbind(-Inf, 0.5, NA))
+veg_081519_ms_0.6 <- reclassify(uav_081519$ndvi, cbind(-Inf, 0.6, NA))
+veg_081519_ms_0.5 <- reclassify(uav_081519$ndvi, cbind(-Inf, 0.5, NA))
+veg_082219_ms_0.6 <- reclassify(uav_082219$ndvi, cbind(-Inf, 0.6, NA))
+veg_082219_ms_0.5 <- reclassify(uav_082219$ndvi, cbind(-Inf, 0.5, NA))
+
+#apply the mask
+uav_061219_masked0.5 <- raster::mask(uav_061219, veg_061219_ms_0.5)
+uav_061219_masked0.6 <- raster::mask(uav_061219, veg_061219_ms_0.6)
+uav_062819_masked0.5 <- raster::mask(uav_062819, veg_062819_ms_0.5)
+uav_062819_masked0.6 <- raster::mask(uav_062819, veg_062819_ms_0.6)
+uav_071219_masked0.5 <- raster::mask(uav_071219, veg_071219_ms_0.5)
+uav_071219_masked0.6 <- raster::mask(uav_071219, veg_071219_ms_0.6)
+uav_071719_masked0.5 <- raster::mask(uav_071719, veg_071719_ms_0.5)
+uav_071719_masked0.6 <- raster::mask(uav_071719, veg_071719_ms_0.6)
+uav_072619_masked0.5 <- raster::mask(uav_072619, veg_072619_ms_0.5)
+uav_072619_masked0.6 <- raster::mask(uav_072619, veg_072619_ms_0.6)
+uav_080219_masked0.5 <- raster::mask(uav_080219, veg_080219_ms_0.5)
+uav_080219_masked0.6 <- raster::mask(uav_080219, veg_080219_ms_0.6)
+uav_081019_masked0.5 <- raster::mask(uav_081019, veg_081019_ms_0.5)
+uav_081019_masked0.6 <- raster::mask(uav_081019, veg_081019_ms_0.6)
+uav_081519_masked0.5 <- raster::mask(uav_081519, veg_081519_ms_0.5)
+uav_081519_masked0.6 <- raster::mask(uav_081519, veg_081519_ms_0.6)
+uav_082219_masked0.5 <- raster::mask(uav_082219, veg_082219_ms_0.5)
+uav_082219_masked0.6 <- raster::mask(uav_082219, veg_082219_ms_0.6)
+
+#write the result
+path_output_ms <- "D:/Micasense_tomato/Outputs"
+writeRaster(uav_061219_masked0.5, file.path(path_output_ms, "uav_061219_masked0.5.tif"))
+writeRaster(uav_061219_masked0.6, file.path(path_output_ms, "uav_061219_masked0.6.tif"))
+writeRaster(uav_062819_masked0.5, file.path(path_output_ms, "uav_062819_masked0.5.tif"))
+writeRaster(uav_062819_masked0.6, file.path(path_output_ms, "uav_062819_masked0.6.tif"))
+writeRaster(uav_071219_masked0.5, file.path(path_output_ms, "uav_071219_masked0.5.tif"))
+writeRaster(uav_071219_masked0.6, file.path(path_output_ms, "uav_071219_masked0.6.tif"))
+writeRaster(uav_071719_masked0.5, file.path(path_output_ms, "uav_071719_masked0.5.tif"))
+writeRaster(uav_071719_masked0.6, file.path(path_output_ms, "uav_071719_masked0.6.tif"))
+writeRaster(uav_072619_masked0.5, file.path(path_output_ms, "uav_072619_masked0.5.tif"))
+writeRaster(uav_072619_masked0.6, file.path(path_output_ms, "uav_072619_masked0.6.tif"))
+writeRaster(uav_080219_masked0.5, file.path(path_output_ms, "uav_080219_masked0.5.tif"))
+writeRaster(uav_080219_masked0.6, file.path(path_output_ms, "uav_080219_masked0.6.tif"))
+writeRaster(uav_081019_masked0.5, file.path(path_output_ms, "uav_081019_masked0.5.tif"))
+writeRaster(uav_081019_masked0.6, file.path(path_output_ms, "uav_081019_masked0.6.tif"))
+writeRaster(uav_081519_masked0.5, file.path(path_output_ms, "uav_081519_masked0.5.tif"))
+writeRaster(uav_081519_masked0.6, file.path(path_output_ms, "uav_081519_masked0.6.tif"))
+writeRaster(uav_082219_masked0.5, file.path(path_output_ms, "uav_082219_masked0.5.tif"))
+writeRaster(uav_082219_masked0.6, file.path(path_output_ms, "uav_082219_masked0.6.tif"))
+
+#write the veg mask
+writeRaster(veg_061219_ms_0.5, file.path(path_output_ms, "veg_061219_ms_0.5.tif"))
+writeRaster(veg_061219_ms_0.6, file.path(path_output_ms, "veg_061219_ms_0.6.tif"))
+writeRaster(veg_062819_ms_0.5, file.path(path_output_ms, "veg_062819_ms_0.5.tif"))
+writeRaster(veg_062819_ms_0.6, file.path(path_output_ms, "veg_062819_ms_0.6.tif"))
+writeRaster(veg_071219_ms_0.5, file.path(path_output_ms, "veg_071219_ms_0.5.tif"))
+writeRaster(veg_071219_ms_0.6, file.path(path_output_ms, "veg_071219_ms_0.6.tif"))
+writeRaster(veg_071719_ms_0.5, file.path(path_output_ms, "veg_071719_ms_0.5.tif"))
+writeRaster(veg_071719_ms_0.6, file.path(path_output_ms, "veg_071719_ms_0.6.tif"))
+writeRaster(veg_072619_ms_0.5, file.path(path_output_ms, "veg_072619_ms_0.5.tif"))
+writeRaster(veg_072619_ms_0.6, file.path(path_output_ms, "veg_072619_ms_0.6.tif"))
+writeRaster(veg_080219_ms_0.5, file.path(path_output_ms, "veg_080219_ms_0.5.tif"))
+writeRaster(veg_080219_ms_0.6, file.path(path_output_ms, "veg_080219_ms_0.6.tif"))
+writeRaster(veg_081019_ms_0.5, file.path(path_output_ms, "veg_081019_ms_0.5.tif"))
+writeRaster(veg_081019_ms_0.6, file.path(path_output_ms, "veg_081019_ms_0.6.tif"))
+writeRaster(veg_081519_ms_0.5, file.path(path_output_ms, "veg_081519_ms_0.5.tif"))
+writeRaster(veg_081519_ms_0.6, file.path(path_output_ms, "veg_081519_ms_0.6.tif"))
+writeRaster(veg_082219_ms_0.5, file.path(path_output_ms, "veg_082219_ms_0.5.tif"))
+writeRaster(veg_082219_ms_0.6, file.path(path_output_ms, "veg_082219_ms_0.6.tif"))
+#read from the laptop 
+
+#remove the ndvi layers
+rm(veg_061219_ms_0.5);rm(veg_061219_ms_0.6);rm(veg_062819_ms_0.5);rm(veg_062819_ms_0.6);rm(veg_071219_ms_0.5);rm(veg_071219_ms_0.6);rm(veg_071719_ms_0.5);rm(veg_071719_ms_0.6);rm(veg_072619_ms_0.5);rm(veg_072619_ms_0.6);rm(veg_080219_ms_0.5);rm(veg_080219_ms_0.6);rm(veg_081019_ms_0.5);rm(veg_081019_ms_0.6);rm(veg_081519_ms_0.5);rm(veg_081519_ms_0.6);rm(veg_082219_ms_0.5);rm(veg_082219_ms_0.6)
+```
+##Fruit mask
+
+```{r}
+hist(veg_082219_ms_0.6)
+hist(uav_082219_masked0.6$ndvi)
+temp_arr <- raster::as.array(uav_082219_masked0.6$ndvi)
+thr_test <- EBImage::otsu(temp_arr, range = c(min(temp_arr, na.rm = TRUE), max(temp_arr, na.rm = TRUE)), levels = 65536)
+thr_test #0.776
+
+
+
+
+
+#calculate redness
+fruit_082219_1 <- uav_082219_masked0.6$red/uav_082219_masked0.6$green
+writeRaster(fruit_082219_1, file.path(path_output_ms, "fruit_082219_1.tif"))
+
+#calculate ExR
+ExR_082219 <- uav_082219_masked0.6$red*1.4 - uav_082219_masked0.6$green
+ExG_082219 <- uav_082219_masked0.6$green*2 - uav_082219_masked0.6$red - uav_082219_masked0.6$blue
+ExGExR_082219 <- ExG_082219 - ExR_082219
+writeRaster(ExR_082219, file.path(path_output_ms, "ExR_082219.tif"),overwrite = TRUE)
+writeRaster(ExG_082219, file.path(path_output_ms, "ExG_082219.tif"),overwrite = TRUE)
+writeRaster(ExGExR_082219, file.path(path_output_ms, "ExGExR_082219.tif"),overwrite = TRUE)
+hist(ExR_082219)
+hist(ExGExR_082219)
+fruit_thr_082219 <- EBImage::otsu(as.array(ExGExR_082219), range = c(min(as.array(ExGExR_082219), na.rm = TRUE), max(as.array(ExGExR_082219), na.rm = TRUE)),levels = 65536)  #0.0648
+
+#build the fruit mask 
+fruit_ms_082219 <- reclassify(ExGExR_082219, cbind(-Inf, 0, NA))
+#fruit_ms_082219 <- reclassify(ExGExR_082219, cbind(-Inf, fruit_thr_082219, NA))
+writeRaster(fruit_ms_082219, file.path(path_output_ms, "fruit_ms_082219.tif"))
+uav_082219_masked0.6_maskedfruit2 <- raster::mask(uav_082219_masked0.6, fruit_ms_082219)
+writeRaster(uav_082219_masked0.6_maskedfruit2, file.path(path_output_ms, "uav_082219_masked0.6_maskedfruit2.tif"))
+```
+##buffer
+```{r}
+fruit_ms_082219_buff <- gBuffer(fruit_ms_082219, width = -0.027567)
+
+```
+
+##Erosion
+```{r}
+#combine two masks into one
+vegfruitmask_082219 <- raster::merge(veg_082219_ms_0.6, fruit_ms_082219)
+writeRaster(vegfruitmask_082219, file.path(path_output_ms,"vegfruitmask_082219.tif"))
+erosion_082219 <- EBImage::erode(as.array(uav_082219_masked0.6_maskedfruit$ndvi), kern = makeBrush(3))
+class(erosion_082219)
+plot(erosion_082219)
+a <- as.raster(erosion_082219)
+```
+
+##Shadow mask
+###Function to calculate HSV
+```{r}
+rgbtohsv <- function(r,g,b){
+  v = 1/3*(r+g+b)
+  s = 1-3/(r+g+b)*min(r,g,b)
+  ndi = (s-v)/(s+v)
+  return(ndi)
+}
+
+hsv_test1 <- rgbtohsv(r = subset(uav_082219_masked0.6, 3), g = subset(uav_082219_masked0.6, 2), b = subset(uav_082219_masked0.6, 1))
+#output
+plot(hsv_test1)
+hist(hsv_test1)
+shadow_thr <- EBImage::otsu(as.array(hsv_test1), range = c(min(as.array(hsv_test1),na.rm = TRUE), max(as.array(hsv_test1), na.rm = TRUE)), levels = 65536) #0.6514
+writeRaster(hsv_test1, file.path(path_output_ms, "hsvNDI_082219.tif"))
+
+
+#build the binary mask 
+shadow_ms_082219 <- reclassify(hsv_test1, cbind(shadow_thr, Inf, NA))
+writeRaster(shadow_ms_082219, file.path(path_output_ms, "shadow_ms_082219.tif"))
+#apply the mask
+#uav_061219_masked0.5 <- raster::mask(uav_061219, veg_061219_ms_0.5)
+uav_082219_masked0.6_maskedfruit_maskedshad <- raster::mask(uav_082219_masked0.6_maskedfruit, shadow_ms_082219)
+writeRaster(uav_082219_masked0.6_maskedfruit_maskedshad, file.path(path_output_ms, "uav_082219_masked0.6_maskedfruit_maskedshad.tif"))
+```
+
+```{r}
+
+hsv_test1 <- rgb2hsv(r = subset(uav_082219_masked0.6, 3), g = subset(uav_082219_masked0.6, 2), b = subset(uav_082219_masked0.6, 1), maxColorValue = 1)
+hsv_test1 <- overlay(subset(uav_082219_masked0.6, 1:3), fun=rgb2hsv)
+hsv_test <- raster::overlay(as.matrix(subset(uav_082219_masked0.6, 1:3)), fun = function(x){rgb2hsv(x, maxColorValue = 1)})
+```
+##Erosion morphological  
+```{r}
+test_erosion <- EBImage::erode()
+```
+
+##Extraction of the flag average
+###Function of extraction
+```{r}
+ref_extract <- function(uav,shp, FUN, buff){
+  ext_uav <- raster::extract(uav, shp, fun = FUN, na.rm = TRUE, df = TRUE, buffer = buff)
+  ext_uav$Treatment <- shp$Treatment
+  ext_uav$Side <- shp$Side
+  ext_uav$Block <- shp$Block
+  ext_uav$Row <- shp$Row
+  #ext_uav$Plot <- shp$Plot
+  return(ext_uav)
+}
+
+#for flagmean extraction 
+ref_extract_flag <- function(uav,shp, FUN, buff){
+  ext_uav <- raster::extract(uav, shp, fun = FUN, na.rm = TRUE, df = TRUE, buffer = buff)
+  ext_uav$Treatment <- shp$Treatment
+  ext_uav$Side <- shp$Side
+  ext_uav$Block <- shp$Block
+  ext_uav$Row <- shp$Row
+  ext_uav$id <- shp$id
+  ext_uav$Plant <- shp$Plant
+  #ext_uav$Plot <- shp$Plot
+  return(ext_uav)
+}
+```
+###Extract different versions of mask  
+```{r}
+#0.5 as threshold
+flagmean_uav_061219_masked0.5 <- ref_extract_flag(uav_061219_masked0.5, flagbuff_2019, mean, 0)
+flagmean_uav_062819_masked0.5 <- ref_extract_flag(uav_062819_masked0.5, flagbuff_2019, mean, 0)
+flagmean_uav_071219_masked0.5 <- ref_extract_flag(uav_071219_masked0.5, flagbuff_2019, mean, 0)
+flagmean_uav_071719_masked0.5 <- ref_extract_flag(uav_071719_masked0.5, flagbuff_2019, mean, 0)
+flagmean_uav_072619_masked0.5 <- ref_extract_flag(uav_072619_masked0.5, flagbuff_2019, mean, 0)
+flagmean_uav_080219_masked0.5 <- ref_extract_flag(uav_080219_masked0.5, flagbuff_2019, mean, 0)
+flagmean_uav_081019_masked0.5 <- ref_extract_flag(uav_081019_masked0.5, flagbuff_2019, mean, 0)
+flagmean_uav_081519_masked0.5 <- ref_extract_flag(uav_081519_masked0.5, flagbuff_2019, mean, 0)
+flagmean_uav_082219_masked0.5 <- ref_extract_flag(uav_082219_masked0.5, flagbuff_2019, mean, 0)
+#0.6 as threshold
+flagmean_uav_061219_masked0.6 <- ref_extract_flag(uav_061219_masked0.6, flagbuff_2019, mean, 0)
+flagmean_uav_062819_masked0.6 <- ref_extract_flag(uav_062819_masked0.6, flagbuff_2019, mean, 0)
+flagmean_uav_071219_masked0.6 <- ref_extract_flag(uav_071219_masked0.6, flagbuff_2019, mean, 0)
+flagmean_uav_071719_masked0.6 <- ref_extract_flag(uav_071719_masked0.6, flagbuff_2019, mean, 0)
+flagmean_uav_072619_masked0.6 <- ref_extract_flag(uav_072619_masked0.6, flagbuff_2019, mean, 0)
+flagmean_uav_080219_masked0.6 <- ref_extract_flag(uav_080219_masked0.6, flagbuff_2019, mean, 0)
+flagmean_uav_081019_masked0.6 <- ref_extract_flag(uav_081019_masked0.6, flagbuff_2019, mean, 0)
+flagmean_uav_081519_masked0.6 <- ref_extract_flag(uav_081519_masked0.6, flagbuff_2019, mean, 0)
+flagmean_uav_082219_masked0.6 <- ref_extract_flag(uav_082219_masked0.6, flagbuff_2019, mean, 0)
+#no mask 
+flagmean_uav_061219_nomask <- ref_extract_flag(uav_061219, flagbuff_2019, mean, 0)
+flagmean_uav_062819_nomask <- ref_extract_flag(uav_062819, flagbuff_2019, mean, 0)
+flagmean_uav_071219_nomask <- ref_extract_flag(uav_071219, flagbuff_2019, mean, 0)
+flagmean_uav_071719_nomask <- ref_extract_flag(uav_071719, flagbuff_2019, mean, 0)
+flagmean_uav_072619_nomask <- ref_extract_flag(uav_072619, flagbuff_2019, mean, 0)
+flagmean_uav_080219_nomask <- ref_extract_flag(uav_080219, flagbuff_2019, mean, 0)
+flagmean_uav_081019_nomask <- ref_extract_flag(uav_081019, flagbuff_2019, mean, 0)
+flagmean_uav_081519_nomask <- ref_extract_flag(uav_081519, flagbuff_2019, mean, 0)
+flagmean_uav_082219_nomask <- ref_extract_flag(uav_082219, flagbuff_2019, mean, 0)
+
+```
+###Combine different dates together
+```{r}
+#0.5
+#add date
+flagmean_uav_061219_masked0.5$Date <- as.Date("2019-06-12")
+flagmean_uav_062819_masked0.5$Date <- as.Date("2019-06-28")
+flagmean_uav_071219_masked0.5$Date <- as.Date("2019-07-12")
+flagmean_uav_071719_masked0.5$Date <- as.Date("2019-07-17")
+flagmean_uav_072619_masked0.5$Date <- as.Date("2019-07-26")
+flagmean_uav_080219_masked0.5$Date <- as.Date("2019-08-02")
+flagmean_uav_081019_masked0.5$Date <- as.Date("2019-08-10")
+flagmean_uav_081519_masked0.5$Date <- as.Date("2019-08-15")
+flagmean_uav_082219_masked0.5$Date <- as.Date("2019-08-22")
+#combine them together
+flagmean_uav_masked0.5 <- rbind(flagmean_uav_061219_masked0.5, flagmean_uav_062819_masked0.5, flagmean_uav_071219_masked0.5, flagmean_uav_071719_masked0.5, flagmean_uav_072619_masked0.5, flagmean_uav_080219_masked0.5, flagmean_uav_081019_masked0.5, flagmean_uav_081519_masked0.5, flagmean_uav_082219_masked0.5)
+
+#0.6
+#add date
+flagmean_uav_061219_masked0.6$Date <- as.Date("2019-06-12")
+flagmean_uav_062819_masked0.6$Date <- as.Date("2019-06-28")
+flagmean_uav_071219_masked0.6$Date <- as.Date("2019-07-12")
+flagmean_uav_071719_masked0.6$Date <- as.Date("2019-07-17")
+flagmean_uav_072619_masked0.6$Date <- as.Date("2019-07-26")
+flagmean_uav_080219_masked0.6$Date <- as.Date("2019-08-02")
+flagmean_uav_081019_masked0.6$Date <- as.Date("2019-08-10")
+flagmean_uav_081519_masked0.6$Date <- as.Date("2019-08-15")
+flagmean_uav_082219_masked0.6$Date <- as.Date("2019-08-22")
+#combine them together
+flagmean_uav_masked0.6 <- rbind(flagmean_uav_061219_masked0.6, flagmean_uav_062819_masked0.6, flagmean_uav_071219_masked0.6, flagmean_uav_071719_masked0.6, flagmean_uav_072619_masked0.6, flagmean_uav_080219_masked0.6, flagmean_uav_081019_masked0.6, flagmean_uav_081519_masked0.6, flagmean_uav_082219_masked0.6)
+
+#add date
+flagmean_uav_061219_nomask$Date <- as.Date("2019-06-12")
+flagmean_uav_062819_nomask$Date <- as.Date("2019-06-28")
+flagmean_uav_071219_nomask$Date <- as.Date("2019-07-12")
+flagmean_uav_071719_nomask$Date <- as.Date("2019-07-17")
+flagmean_uav_072619_nomask$Date <- as.Date("2019-07-26")
+flagmean_uav_080219_nomask$Date <- as.Date("2019-08-02")
+flagmean_uav_081019_nomask$Date <- as.Date("2019-08-10")
+flagmean_uav_081519_nomask$Date <- as.Date("2019-08-15")
+flagmean_uav_082219_nomask$Date <- as.Date("2019-08-22")
+#combine them together
+flagmean_uav_nomask <- rbind(flagmean_uav_061219_nomask, flagmean_uav_062819_nomask, flagmean_uav_071219_nomask, flagmean_uav_071719_nomask, flagmean_uav_072619_nomask, flagmean_uav_080219_nomask, flagmean_uav_081019_nomask, flagmean_uav_081519_nomask, flagmean_uav_082219_nomask)
+
+```
+
+
 #Read macaw imgs
-##read macaw function  
+##read 12band macaw function 
+```{r}
+path_12bands <- "D:/MACAW_tomato"
+
+
+read_12band <- function(path, stacks){
+  uav_stacks <- raster::brick(file.path(path, stacks))
+  #subset to 1:12
+  uav_stacks <- subset(uav_stacks, 1:12)
+  #rename 
+  names(uav_stacks) <- c("X800","X450","X480","X530","X550","X570","X670","X700","X720","X740","X900","X970")
+  return(uav_stacks)
+}
+```
+
+##(Useless currently)read macaw function  
 ```{r}
 read_macaw <- function(path, stacks){
   #read raster layer, and crop with the extent
@@ -23,10 +462,30 @@ read_macaw <- function(path, stacks){
   
   return(uav_stacks)
 }
+
+
+```
+##Read 12band macaw from mobile hard drive
+```{r}
+path_12band <- "D:/MACAW_tomato"
+macaw_082219 <- read_12band(path_12band, "agisoft_20190822_12bands_withgcps.tif")
+macaw_082219
+macaw_081519 <- read_12band(path_12band, "agisoft_20190815_12bands_withgcps.tif")
+macaw_081519
+macaw_081019 <- read_12band(path_12band, "agisoft_20190810_12bands_withgcps.tif")
+macaw_081019
+macaw_080219 <- read_12band(path_12band, "agisoft_20190802_12bands_withgcps.tif")
+macaw_080219
+macaw_062819 <- read_12band(path_12band, "agisoft_20190628_12bands_withgcps.tif")
+macaw_062819
+macaw_053119 <- read_12band(path_12band, "agisoft_20190531_12bands_withgcps.tif")
+macaw_053119
+
 ```
 
+##(Not useful)Read from local computer
 ```{r}
-path_pri <- "C:/Users/zt92/Box Sync/BIOSTIMULANT FIELD SCREENING MASTER FOLDER/DRONE/macaw_pri"
+path_pri <- "C:/Users/tangz/Box Sync/BIOSTIMULANT FIELD SCREENING MASTER FOLDER/DRONE/macaw_pri"
 
 #0822
 macaw_082219 <- read_macaw(path_pri, "tomato_macawrgbpri_082219.tif")
@@ -52,26 +511,374 @@ writeRaster(pri_062819, file.path(path_pri, "pri_062819.tif"))
 
 ```
 
-#Read shapefiles
+
+##Read fom the server
 ```{r}
-#path_shp <- "/z0/zt92/Tomato_biomass/tomato_analysis_2019/shapefiles"
-path_shp <- "Z:/CC_UCD_atRR/data2/UAV_MeeraeTomato/shapefiles"
+path_pri_server <- "/z0/zt92/Tomato_biomass/tomato_analysis_2019/outputs"
+pri_062819 <- raster(file.path(path_pri_server, 'pri_062819.tif'))
+pri_080219 <- raster(file.path(path_pri_server, 'pri_080219.tif'))
+pri_081019 <- raster(file.path(path_pri_server, 'pri_081019.tif'))
+pri_081519 <- raster(file.path(path_pri_server, 'pri_081519.tif'))
+pri_082219 <- raster(file.path(path_pri_server, 'pri_082219.tif'))
+```
 
-rows_2019 <- shapefile(file.path(path_shp, "tomato_rows_2019.shp"))
+
+#Vegetation mask
+##Calculate NDVI
+```{r}
+ndvi_053119 <- (macaw_053119$X800-macaw_053119$X670)/(macaw_053119$X800+macaw_053119$X670)
+ndvi_062819 <- (macaw_062819$X800-macaw_062819$X670)/(macaw_062819$X800+macaw_062819$X670)
+ndvi_080219 <- (macaw_080219$X800-macaw_080219$X670)/(macaw_080219$X800+macaw_080219$X670)
+#ndvi_081019 <- (macaw_081019$X800-macaw_081019$X670)/(macaw_081019$X800+macaw_081019$X670)
+ndvi_081519 <- (macaw_081519$X800-macaw_081519$X670)/(macaw_081519$X800+macaw_081519$X670)
+ndvi_082219 <- (macaw_082219$X800-macaw_082219$X670)/(macaw_082219$X800+macaw_082219$X670)
+
+#add layer to the raster brick 
+macaw_053119 <- addLayer(macaw_053119, ndvi_053119)
+names(macaw_053119)[13] <- "NDVI"
+macaw_062819 <- addLayer(macaw_062819, ndvi_062819)
+names(macaw_062819)[13] <- "NDVI"
+macaw_080219 <- addLayer(macaw_080219, ndvi_080219)
+names(macaw_080219)[13] <- "NDVI"
+#macaw_081019 <- addLayer(macaw_081019, ndvi_081019)
+#names(macaw_081019)[13] <- "NDVI"
+macaw_081519 <- addLayer(macaw_081519, ndvi_081519)
+names(macaw_081519)[13] <- "NDVI"
+macaw_082219 <- addLayer(macaw_082219, ndvi_082219)
+names(macaw_082219)[13] <- "NDVI"
+
+#Output
+path_output <- "D:/MACAW_tomato/Outputs"
+writeRaster(ndvi_082219, file.path(path_output, "NDVI_082219.tif"))
+writeRaster(ndvi_081519, file.path(path_output, "NDVI_081519.tif"))
+writeRaster(ndvi_081019, file.path(path_output, "NDVI_081019.tif"))
+writeRaster(ndvi_080219, file.path(path_output, "NDVI_080219.tif"))
+writeRaster(ndvi_062819, file.path(path_output, "NDVI_062819.tif"))
+writeRaster(ndvi_053119, file.path(path_output, "NDVI_053119.tif"))
 
 
-flags_2019 <- shapefile(file.path(path_shp, "flags_tomato_2019.shp"))
+#read ndvi 
+path_output <- "D:/MACAW_tomato/Outputs"
+ndvi_053119 <- raster(file.path(path_output, "NDVI_053119.tif"))
+ndvi_062819 <- raster(file.path(path_output, "NDVI_062819.tif"))
+ndvi_080219 <- raster(file.path(path_output, "NDVI_080219.tif"))
+ndvi_081019 <- raster(file.path(path_output, "NDVI_081019.tif"))
+ndvi_081519 <- raster(file.path(path_output, "NDVI_081519.tif"))
 
 
-rows_2019_cen1ft <- shapefile(file.path(path_shp, "tomato_rows_2019_cen1ft"))
-rows_2019_cen2ft <- shapefile(file.path(path_shp, "tomato_rows_2019_cen2ft"))
-rows_2019_cen3ft <- shapefile(file.path(path_shp, "tomato_rows_2019_cen3ft"))
+```
+###Crop to boundary
+```{r}
+BND <- shapefile(file.path(path_shp, "tomato_BND_2019.shp"))
+plot(BND, add = TRUE)
+macaw_053119 <- raster::crop(macaw_053119, BND)
+macaw_062819 <- raster::crop(macaw_062819, BND)
+macaw_080219 <- raster::crop(macaw_080219, BND)
+macaw_081019 <- raster::crop(macaw_081019, BND)
+macaw_081519 <- raster::crop(macaw_081519, BND)
+macaw_082219 <- raster::crop(macaw_082219, BND)
+
+ndvi_053119 <- raster::crop(ndvi_053119, BND)
+ndvi_062819 <- raster::crop(ndvi_062819, BND)
+ndvi_080219 <- raster::crop(ndvi_080219, BND)
+#ndvi_081019 <- raster::crop(ndvi_081019, BND)
+ndvi_081519 <- raster::crop(ndvi_081519, BND)
 
 ```
 
-#Extraction 
-##function
+##Vegetation mask
+###use a threshold as 0.5
 ```{r}
+#vegetation mask
+veg_053119 <- reclassify(macaw_053119$NDVI, cbind(-Inf, 0.5, NA))
+veg_062819 <- reclassify(macaw_062819$NDVI, cbind(-Inf, 0.5, NA))
+veg_080219 <- reclassify(macaw_080219$NDVI, cbind(-Inf, 0.5, NA))
+#veg_081019 <- reclassify(macaw_081019$NDVI, cbind(-Inf, 0.5, NA))
+veg_081519 <- reclassify(macaw_081519$NDVI, cbind(-Inf, 0.5, NA))
+veg_082219 <- reclassify(macaw_082219$NDVI, cbind(-Inf, 0.5, NA))
+
+#apply the mask
+macaw_053119_masked <- raster::mask(macaw_053119, veg_053119)
+macaw_062819_masked <- raster::mask(macaw_062819, veg_062819)
+macaw_080219_masked <- raster::mask(macaw_080219, veg_080219)
+#macaw_081019_masked <- raster::mask(macaw_081019, veg_081019)
+macaw_081519_masked <- raster::mask(macaw_081519, veg_081519)
+macaw_082219_masked <- raster::mask(macaw_082219, veg_082219)
+
+#write the result
+path_output <- "D:/MACAW_tomato/Outputs"
+writeRaster(macaw_053119_masked, file.path(path_output, "macaw_053119_masked0.5.tif"), overwrite = TRUE)
+writeRaster(macaw_062819_masked, file.path(path_output, "macaw_062819_masked0.5.tif"), overwrite = TRUE)
+writeRaster(macaw_080219_masked, file.path(path_output, "macaw_080219_masked0.5.tif"), overwrite = TRUE)
+#writeRaster(macaw_081019_masked, file.path(path_output, "macaw_081019_masked0.5.tif"))
+writeRaster(macaw_081519_masked, file.path(path_output, "macaw_081519_masked0.5.tif"),overwrite=  TRUE)
+writeRaster(macaw_082219_masked, file.path(path_output, "macaw_082219_masked0.5.tif"), overwrite = TRUE)
+
+#read from the laptop 
+
+#remove the ndvi layers
+rm(veg_062819);rm(veg_080219);rm(veg_081019);rm(veg_081519);rm(veg_082219)
+rm(ndvi_062819);rm(ndvi_080219);rm(ndvi_081019);rm(ndvi_081519);rm(ndvi_082219)
+
+```
+###Buffer over the vegetation mask 
+```{r}
+#nonveg_053119 <- reclassify(ndvi_053119, cbind(0.5, Inf, NA))
+nonveg_053119 <- reclassify(ndvi_053119, rbind(c(0.5, Inf, 0),c(-Inf, 0.5, 1)))
+nonveg_062819 <- reclassify(ndvi_062819, rbind(c(0.5, Inf, 0),c(-Inf, 0.5, 1)))
+nonveg_080219 <- reclassify(ndvi_080219, rbind(c(0.5, Inf, 0),c(-Inf, 0.5, 1)))
+nonveg_081519 <- reclassify(ndvi_081519, rbind(c(0.5, Inf, 0),c(-Inf, 0.5, 1)))
+#output the nonveg mask 
+writeRaster(nonveg_053119, file.path(path_output, "nonveg_053119.tif"))
+writeRaster(nonveg_062819, file.path(path_output, "nonveg_062819.tif"))
+writeRaster(nonveg_080219, file.path(path_output, "nonveg_080219.tif"))
+writeRaster(nonveg_081519, file.path(path_output, "nonveg_081519.tif"))
+#convert raster to shapefile
+nonveg_053119_shp <- raster::rasterToPolygons(nonveg_053119, fun = function(x){x>0})
+nonveg_062819_shp <- raster::rasterToPolygons(nonveg_062819, fun = function(x){x>0})
+nonveg_080219_shp <- raster::rasterToPolygons(nonveg_080219, fun = function(x){x>0})
+nonveg_081519_shp <- raster::rasterToPolygons(nonveg_081519, fun = function(x){x>0})
+#output the shapefile
+shapefile(nonveg_053119_shp, filename = file.path(path_output, "nonveg_053119_shp.shp"))
+shapefile(nonveg_062819_shp, filename = file.path(path_output, "nonveg_062819_shp.shp"))
+shapefile(nonveg_080219_shp, filename = file.path(path_output, "nonveg_080219_shp.shp"))
+shapefile(nonveg_081519_shp, filename = file.path(path_output, "nonveg_081519_shp.shp"))
+#buffer around the shapefile 
+nonveg_053119_shp_buff <- raster::buffer(nonveg_053119_shp, width = res(nonveg_053119)[1]*3)
+nonveg_062819_shp_buff <- raster::buffer(nonveg_062819_shp, width = res(nonveg_053119)[1]*3)
+nonveg_080219_shp_buff <- raster::buffer(nonveg_080219_shp, width = res(nonveg_053119)[1]*3)
+nonveg_081519_shp_buff <- raster::buffer(nonveg_081519_shp, width = res(nonveg_053119)[1]*3)
+#output the shapefile 
+shapefile(nonveg_053119_shp_buff, filename = file.path(path_output, "nonveg_053119_shp_buff.shp"))
+shapefile(nonveg_062819_shp_buff, filename = file.path(path_output, "nonveg_062819_shp_buff.shp"))
+shapefile(nonveg_080219_shp_buff, filename = file.path(path_output, "nonveg_080219_shp_buff.shp"))
+shapefile(nonveg_081519_shp_buff, filename = file.path(path_output, "nonveg_081519_shp_buff.shp"))
+
+
+#convert raster to shapefile
+nonveg_053119_shp <- raster::rasterToPolygons(nonveg_053119_2, fun = function(x){x>0})
+writeRaster(nonveg_053119, file.path(path_output, "nonveg_053119.tif"))
+writeRaster(nonveg_053119_2, file.path(path_output, "nonveg_053119_2.tif"))
+
+
+```
+
+
+#Read the masked MACAW images
+```{r}
+path_output <- "D:/MACAW_tomato/Outputs"
+macaw_053119_masked <- raster::brick(file.path(path_output, "macaw_053119_masked0.5.tif"))
+names(macaw_053119_masked) <- c("X800","X450","X480","X530","X550","X570","X670","X700","X720","X740","X900","X970","NDVI")
+macaw_062819_masked <- raster::brick(file.path(path_output, "macaw_062819_masked0.5.tif"))
+names(macaw_062819_masked) <- c("X800","X450","X480","X530","X550","X570","X670","X700","X720","X740","X900","X970","NDVI")
+macaw_080219_masked <- raster::brick(file.path(path_output, "macaw_080219_masked0.5.tif"))
+names(macaw_080219_masked) <- c("X800","X450","X480","X530","X550","X570","X670","X700","X720","X740","X900","X970","NDVI")
+macaw_081519_masked <- raster::brick(file.path(path_output, "macaw_081519_masked0.5.tif"))
+names(macaw_081519_masked) <- c("X800","X450","X480","X530","X550","X570","X670","X700","X720","X740","X900","X970","NDVI")
+
+
+```
+#Apply a buffer around the veg mask 
+```{r}
+
+veg_062819 <- reclassify(macaw_062819$NDVI, cbind(-Inf, 0.5, NA))
+
+```
+
+##Fruit mask
+###before the veg mask 
+```{r}
+#062819
+#ExR = 1.4Red-Green
+ExR_062819_macaw_masked <- macaw_062819_masked$X670*1.4 - macaw_062819_masked$X550
+#ExG = 2Green - Red - Blue
+ExG_062819_macaw_masked <- macaw_062819_masked$X550*2 - macaw_062819_masked$X670 - macaw_062819_masked$X450
+ExGExR_062819_macaw_masked <- ExG_062819_macaw_masked - ExR_062819_macaw_masked
+hist(ExGExR_062819_macaw_masked)
+#output
+writeRaster(ExGExR_062819_macaw_masked, file.path(path_output, "ExGExR_062819_macaw_masked.tif"))
+#calculate the threshold 
+temp_arr <- as.array(ExGExR_062819_macaw_masked)
+temp_thr <- EBImage::otsu(temp_arr, range = c(min(temp_arr, na.rm = TRUE), max(temp_arr, na.rm = TRUE)), levels = 65536)  #-27366,92
+#build the fruit mask
+veg_exgexr_062819_macaw_masked <- reclassify(ExGExR_062819_macaw_masked, cbind(-Inf,0,NA))
+macaw_062819_exgexrmasked <- raster::mask(macaw_062819_masked, veg_exgexr_062819_macaw_masked)
+writeRaster(macaw_062819_exgexrmasked, file.path(path_output, "macaw_062819_exgexrmasked.tif"),overwrite = TRUE)
+
+
+#080219 
+#ExR = 1.4Red-Green
+ExR_080219_macaw_masked <- macaw_080219_masked$X670*1.4 - macaw_080219_masked$X550
+#ExG = 2Green - Red - Blue
+ExG_080219_macaw_masked <- macaw_080219_masked$X550*2 - macaw_080219_masked$X670 - macaw_080219_masked$X450
+ExGExR_080219_macaw_masked <- ExG_080219_macaw_masked - ExR_080219_macaw_masked
+hist(ExGExR_080219_macaw_masked)
+#output
+writeRaster(ExGExR_080219_macaw_masked, file.path(path_output, "ExGExR_080219_macaw_masked.tif"))
+#calculate the threshold 
+temp_arr <- as.array(ExGExR_080219_macaw_masked)
+temp_thr <- EBImage::otsu(temp_arr, range = c(min(temp_arr, na.rm = TRUE), max(temp_arr, na.rm = TRUE)), levels = 65536)  #-50047.14
+temp_thr
+#build the fruit mask
+veg_exgexr_080219_macaw_masked <- reclassify(ExGExR_080219_macaw_masked, cbind(-Inf,0,NA))
+macaw_080219_exgexrmasked <- raster::mask(macaw_080219_masked, veg_exgexr_080219_macaw_masked)
+writeRaster(macaw_080219_exgexrmasked, file.path(path_output, "macaw_080219_exgexrmasked.tif"), overwrite = TRUE)
+
+#0815
+#081519
+#ExR = 1.4Red-Green
+ExR_081519_macaw_masked <- macaw_081519_masked$X670*1.4 - macaw_081519_masked$X550
+#ExG = 2Green - Red - Blue
+ExG_081519_macaw_masked <- macaw_081519_masked$X550*2 - macaw_081519_masked$X670 - macaw_081519_masked$X450
+ExGExR_081519_macaw_masked <- ExG_081519_macaw_masked - ExR_081519_macaw_masked
+hist(ExGExR_081519_macaw_masked)
+#output
+writeRaster(ExGExR_081519_macaw_masked, file.path(path_output, "ExGExR_081519_macaw_masked.tif"))
+#calculate the threshold 
+temp_arr <- as.array(ExGExR_081519_macaw_masked)
+temp_thr <- EBImage::otsu(temp_arr, range = c(min(temp_arr, na.rm = TRUE), max(temp_arr, na.rm = TRUE)), levels = 65536)  #-42245.6
+temp_thr
+#build the fruit mask
+veg_exgexr_081519_macaw_masked <- reclassify(ExGExR_081519_macaw_masked, cbind(-Inf,0,NA))
+macaw_081519_exgexrmasked <- raster::mask(macaw_081519_masked, veg_exgexr_081519_macaw_masked)
+writeRaster(macaw_081519_exgexrmasked, file.path(path_output, "macaw_081519_exgexrmasked.tif"), overwrite = TRUE)
+
+#0822
+#ExR = 1.4Red-Green
+ExR_082219_macaw_masked <- macaw_082219$X670*1.4 - macaw_082219$X550
+#ExG = 2Green - Red - Blue
+ExG_082219_macaw_masked <- macaw_082219$X550*2 - macaw_082219$X670 - macaw_082219$X450
+ExGExR_082219_macaw_masked <- ExG_082219_macaw_masked - ExR_082219_macaw_masked
+hist(ExGExR_082219_macaw_masked)
+#output
+writeRaster(ExGExR_082219_macaw_masked, file.path(path_output, "ExGExR_082219_macaw_masked.tif"))
+#calculate the threshold 
+temp_arr <- as.array(ExGExR_082219_macaw_masked)
+temp_thr <- EBImage::otsu(temp_arr, range = c(min(temp_arr, na.rm = TRUE), max(temp_arr, na.rm = TRUE)), levels = 65536)  #-27366.92
+#build the fruit mask
+veg_exgexr_082219_macaw_masked <- reclassify(ExGExR_082219_macaw_masked, cbind(-Inf,0,NA))
+macaw_082219_exgexrmasked <- raster::mask(macaw_082219_masked, veg_exgexr_082219_macaw_masked)
+writeRaster(macaw_082219_exgexrmasked, file.path(path_output, "macaw_082219_exgexrmasked.tif"))
+
+```
+
+###after the veg mask 
+```{r}
+#calculate ExR 
+
+
+ExR_082219 <- uav_082219_masked0.6$red*1.4 - uav_082219_masked0.6$green
+ExG_082219 <- uav_082219_masked0.6$green*2 - uav_082219_masked0.6$red - uav_082219_masked0.6$blue
+ExGExR_082219 <- ExG_082219 - ExR_082219
+writeRaster(ExR_082219, file.path(path_output_ms, "ExR_082219.tif"),overwrite = TRUE)
+writeRaster(ExG_082219, file.path(path_output_ms, "ExG_082219.tif"),overwrite = TRUE)
+writeRaster(ExGExR_082219, file.path(path_output_ms, "ExGExR_082219.tif"),overwrite = TRUE)
+hist(ExR_082219)
+hist(ExGExR_082219)
+fruit_thr_082219 <- EBImage::otsu(as.array(ExGExR_082219), range = c(min(as.array(ExGExR_082219), na.rm = TRUE), max(as.array(ExGExR_082219), na.rm = TRUE)),levels = 65536)  #0.0648
+
+#build the fruit mask 
+fruit_ms_082219 <- reclassify(ExGExR_082219, cbind(-Inf, 0, NA))
+#fruit_ms_082219 <- reclassify(ExGExR_082219, cbind(-Inf, fruit_thr_082219, NA))
+writeRaster(fruit_ms_082219, file.path(path_output_ms, "fruit_ms_082219.tif"))
+uav_082219_masked0.6_maskedfruit2 <- raster::mask(uav_082219_masked0.6, fruit_ms_082219)
+writeRaster(uav_082219_masked0.6_maskedfruit2, file.path(path_output_ms, "uav_082219_masked0.6_maskedfruit2.tif"))
+
+```
+###shadow mask 
+```{r}
+rgbtohsv <- function(r,g,b){
+  r = r/65536
+  g = g/65536
+  b = b/65536
+  v = 1/3*(r+g+b)
+  s = 1-3/(r+g+b)*min(r,g,b)
+  ndi = (s-v)/(s+v)
+  return(ndi)
+}
+
+hsv_053119 <- rgbtohsv(r = subset(macaw_053119_masked,6), g = subset(macaw_053119_masked, 4), b = subset(macaw_053119_masked, 2))
+writeRaster(hsv_053119, file.path(path_output, "hsv_053119.tif"))
+hsv_062819 <- rgbtohsv(r = subset(macaw_062819_masked,6), g = subset(macaw_062819_masked, 4), b = subset(macaw_062819_masked, 2))
+writeRaster(hsv_062819, file.path(path_output, "hsv_062819.tif"))
+hsv_080219 <- rgbtohsv(r = subset(macaw_080219_masked,6), g = subset(macaw_080219_masked, 4), b = subset(macaw_080219_masked, 2))
+writeRaster(hsv_080219, file.path(path_output, "hsv_080219.tif"))
+hsv_081519 <- rgbtohsv(r = subset(macaw_081519_masked,6), g = subset(macaw_081519_masked, 4), b = subset(macaw_081519_masked, 2))
+writeRaster(hsv_081519, file.path(path_output, "hsv_081519.tif"))
+
+hist(hsv_053119)
+hist(hsv_062819)
+hsv_test1 <- rgbtohsv(r = subset(uav_082219_masked0.6, 3), g = subset(uav_082219_masked0.6, 2), b = subset(uav_082219_masked0.6, 1))
+#output
+plot(hsv_test1)
+hist(hsv_test1)
+shadow_thr <- EBImage::otsu(as.array(hsv_test1), range = c(min(as.array(hsv_test1),na.rm = TRUE), max(as.array(hsv_test1), na.rm = TRUE)), levels = 65536) #0.6514
+writeRaster(hsv_test1, file.path(path_output_ms, "hsvNDI_082219.tif"))
+
+```
+
+
+###(Useless currently)Find threshold based on NDVI
+```{r}
+###convert to array 
+ndvi_062819_arr <- raster::as.array(macaw_062819$NDVI)
+thr_ndvi_062819 <- EBImage::otsu(ndvi_062819_arr, range = c(min(ndvi_062819_arr, na.rm = TRUE), max(ndvi_062819_arr, na.rm = TRUE)), levels = 256)
+thr_ndvi_062819   #0.5313
+hist(ndvi_062819_arr, main = "NDVI 2019-06-28", xlab = "NDVI")
+
+ndvi_080219_arr <- raster::as.array(macaw_080219$NDVI)
+thr_ndvi_080219 <- EBImage::otsu(ndvi_080219_arr, range = c(min(ndvi_080219_arr, na.rm = TRUE), max(ndvi_080219_arr, na.rm = TRUE)), levels = 256)
+thr_ndvi_080219   #0.4882
+hist(ndvi_080219_arr,main = "NDVI 2019-08-02", xlab = "NDVI")
+
+ndvi_081019_arr <- raster::as.array(macaw_081019$NDVI)
+thr_ndvi_081019 <- EBImage::otsu(ndvi_081019_arr, range = c(min(ndvi_081019_arr, na.rm = TRUE), max(ndvi_081019_arr, na.rm = TRUE)), levels = 256)
+thr_ndvi_081019   #0.5586
+hist(ndvi_081019_arr, main = "NDVI 2019-08-10", xlab = "NDVI")
+
+ndvi_081519_arr <- raster::as.array(macaw_081519$NDVI)
+thr_ndvi_081519 <- EBImage::otsu(ndvi_081519_arr, range = c(min(ndvi_081519_arr, na.rm = TRUE), max(ndvi_081519_arr, na.rm = TRUE)), levels = 256)
+thr_ndvi_081519  #0.5745
+hist(ndvi_081519_arr, main = "NDVI 2019-08-15", xlab = "NDVI")
+
+ndvi_082219_arr <- raster::as.array(macaw_082219$NDVI)
+thr_ndvi_082219 <- EBImage::otsu(ndvi_082219_arr, range = c(min(ndvi_082219_arr, na.rm = TRUE), max(ndvi_082219_arr, na.rm = TRUE)), levels = 256)
+thr_ndvi_082219  #0.06599
+hist(ndvi_082219_arr)
+
+
+```
+
+```{r}
+
+```
+
+##(Useless)Read vegetation mask
+```{r}
+path_pri_server <- "/z0/zt92/Tomato_biomass/tomato_analysis_2019/outputs"
+veg_062819 <- raster(file.path(path_pri_server,"veg_062819_ndvi0.7.tif"))
+veg_080219 <- raster(file.path(path_pri_server,"veg_080219_ndvi0.7.tif"))
+veg_081019 <- raster(file.path(path_pri_server,"veg_081019_ndvi0.7.tif"))
+veg_081519 <- raster(file.path(path_pri_server,"veg_081519_ndvi0.7.tif"))
+veg_082219 <- raster(file.path(path_pri_server,"veg_082219_ndvi0.7.tif"))
+
+```
+##(Useless)Apply mask
+```{r}
+pri_062819_masked <- raster::mask(pri_062819, resample(veg_062819, pri_062819))
+pri_080219_masked <- raster::mask(pri_080219, resample(veg_080219, pri_080219))
+pri_081019_masked <- raster::mask(pri_081019, resample(veg_081019, pri_081019))
+pri_081519_masked <- raster::mask(pri_081519, resample(veg_081519, pri_081519))
+pri_082219_masked <- raster::mask(pri_082219, resample(veg_082219, pri_082219))
+
+```
+
+
+
+#Extraction 
+##Function
+```{r}
+#for rowmean extraction
 ref_extract <- function(uav,shp, FUN, buff){
   ext_uav <- raster::extract(uav, shp, fun = FUN, na.rm = TRUE, df = TRUE, buffer = buff)
   ext_uav$Treatment <- shp$Treatment
@@ -82,67 +889,1991 @@ ref_extract <- function(uav,shp, FUN, buff){
   return(ext_uav)
 }
 
+#for flagmean extraction 
+ref_extract_flag <- function(uav,shp, FUN, buff){
+  ext_uav <- raster::extract(uav, shp, fun = FUN, na.rm = TRUE, df = TRUE, buffer = buff)
+  ext_uav$Treatment <- shp$Treatment
+  ext_uav$Side <- shp$Side
+  ext_uav$Block <- shp$Block
+  ext_uav$Row <- shp$Row
+  ext_uav$id <- shp$id
+  
+  #ext_uav$Plot <- shp$Plot
+  return(ext_uav)
+}
+
+```
+##Extract from the plants around the flags
+###with vegetation mask
+```{r}
+flagmean_macaw_053119 <- ref_extract_flag(macaw_053119_masked, shp = flagbuff_2019, FUN = mean, buff = 0)
+flagmean_macaw_062819 <- ref_extract_flag(macaw_062819_masked, shp = flagbuff_2019, FUN = mean, buff = 0)
+flagmean_macaw_080219 <- ref_extract_flag(macaw_080219_masked, shp = flagbuff_2019, FUN = mean, buff = 0)
+#flagmean_macaw_081019 <- ref_extract_flag(macaw_081019_masked, shp = flagbuff_2019, FUN = mean, buff = 0)
+flagmean_macaw_081519 <- ref_extract_flag(macaw_081519_masked, shp = flagbuff_2019, FUN = mean, buff = 0)
+flagmean_macaw_082219 <- ref_extract_flag(macaw_082219_masked, shp = flagbuff_2019, FUN = mean, buff = 0)
+
+#add date
+flagmean_macaw_053119$Date <- "2019-05-31"
+flagmean_macaw_062819$Date <- "2019-06-28"
+flagmean_macaw_080219$Date <- "2019-08-02"
+flagmean_macaw_081519$Date <- "2019-08-15"
+flagmean_macaw_082219$Date <- "2019-08-22"
+
+#combine them 
+flagmean_macaw <- rbind(flagmean_macaw_053119, flagmean_macaw_062819, flagmean_macaw_080219, flagmean_macaw_081519, flagmean_macaw_082219)
+
+```
+###with fruit mask
+```{r}
+#flagmean_macaw_frmask_053119 <- ref_extract_flag(macaw_053119_exgexrmasked, shp = flagbuff_2019, FUN = mean, buff = 0)
+flagmean_macaw_exgexrmask_062819 <- ref_extract_flag(macaw_062819_exgexrmasked, shp = flagbuff_2019, FUN = mean, buff = 0)
+flagmean_macaw_exgexrmask_080219 <- ref_extract_flag(macaw_080219_exgexrmasked, shp = flagbuff_2019, FUN = mean, buff = 0)
+#flagmean_macaw_081019 <- ref_extract_flag(macaw_081019_masked, shp = flagbuff_2019, FUN = mean, buff = 0)
+flagmean_macaw_exgexrmask_081519 <- ref_extract_flag(macaw_081519_exgexrmasked, shp = flagbuff_2019, FUN = mean, buff = 0)
+#$flagmean_macaw_exgexrmask_082219 <- ref_extract_flag(macaw_082219_exgexrmasked, shp = flagbuff_2019, FUN = mean, buff = 0)
+
+#add date
+#flagmean_macaw_exgexrmask_053119$Date <- "2019-05-31"
+flagmean_macaw_exgexrmask_062819$Date <- "2019-06-28"
+flagmean_macaw_exgexrmask_080219$Date <- "2019-08-02"
+flagmean_macaw_exgexrmask_081519$Date <- "2019-08-15"
+#flagmean_macaw_exgexrmask_082219$Date <- "2019-08-22"
+
+#combine them 
+flagmean_macaw_exgexrmask <- rbind(flagmean_macaw_exgexrmask_062819, flagmean_macaw_exgexrmask_080219, flagmean_macaw_exgexrmask_081519)
 ```
 
-#Row average
+
+###without mask
 ```{r}
-a <- ref_extract(macaw_082219, shp = rows_2019_cen1ft, FUN = mean, buff = 0)
+flagmean_macaw_062819_nomask <- ref_extract_flag(macaw_062819, shp = flagbuff_2019, FUN = mean, buff = 0)
+flagmean_macaw_080219_nomask <- ref_extract_flag(macaw_080219, shp = flagbuff_2019, FUN = mean, buff = 0)
+#flagmean_macaw_081019_nomask <- ref_extract_flag(macaw_081019, shp = flagbuff_2019, FUN = mean, buff = 0)
+flagmean_macaw_081519_nomask <- ref_extract_flag(macaw_081519, shp = flagbuff_2019, FUN = mean, buff = 0)
+flagmean_macaw_082219_nomask <- ref_extract_flag(macaw_082219, shp = flagbuff_2019, FUN = mean, buff = 0)
 
-#0822
-rowmean_macaw_082219 <- ref_extract(macaw_082219, shp = rows_2019, FUN = mean, buff = 0)
-rowmean_macaw_082219_1ft <- ref_extract(macaw_082219, shp = rows_2019_cen1ft, FUN = mean, buff = 0)
-rowmean_macaw_082219_2ft <- ref_extract(macaw_082219, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
-rowmean_macaw_082219_3ft <- ref_extract(macaw_082219, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
-#0815
-rowmean_macaw_081519 <- ref_extract(macaw_081519, shp = rows_2019, FUN = mean, buff = 0)
-rowmean_macaw_081519_1ft <- ref_extract(macaw_081519, shp = rows_2019_cen1ft, FUN = mean, buff = 0)
-rowmean_macaw_081519_2ft <- ref_extract(macaw_081519, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
-rowmean_macaw_081519_3ft <- ref_extract(macaw_081519, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
-#0810
-rowmean_macaw_081019 <- ref_extract(macaw_081019, shp = rows_2019, FUN = mean, buff = 0)
-rowmean_macaw_081019_1ft <- ref_extract(macaw_081019, shp = rows_2019_cen1ft, FUN = mean, buff = 0)
-rowmean_macaw_081019_2ft <- ref_extract(macaw_081019, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
-rowmean_macaw_081019_3ft <- ref_extract(macaw_081019, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
-#0802
-rowmean_macaw_080219 <- ref_extract(macaw_080219, shp = rows_2019, FUN = mean, buff = 0)
-rowmean_macaw_080219_1ft <- ref_extract(macaw_080219, shp = rows_2019_cen1ft, FUN = mean, buff = 0)
-rowmean_macaw_080219_2ft <- ref_extract(macaw_080219, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
-rowmean_macaw_080219_3ft <- ref_extract(macaw_080219, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
-#0628
-rowmean_macaw_062819 <- ref_extract(macaw_062819, shp = rows_2019, FUN = mean, buff = 0)
-rowmean_macaw_062819_1ft <- ref_extract(macaw_062819, shp = rows_2019_cen1ft, FUN = mean, buff = 0)
-rowmean_macaw_062819_2ft <- ref_extract(macaw_062819, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
-rowmean_macaw_062819_3ft <- ref_extract(macaw_062819, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
+#add date
+flagmean_macaw_062819_nomask$Date <- "2019-06-28"
+flagmean_macaw_080219_nomask$Date <- "2019-08-02"
+flagmean_macaw_081519_nomask$Date <- "2019-08-15"
+flagmean_macaw_082219_nomask$Date <- "2019-08-22"
 
+#combine them 
+flagmean_macaw_nomask <- rbind(flagmean_macaw_062819_nomask, flagmean_macaw_080219_nomask, flagmean_macaw_081519_nomask, flagmean_macaw_082219_nomask)
+```
+
+##Extract from the rows
+###053119 only
+```{r}
+path_df <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/dataframes"
+
+#without mask 
+rowmean_macaw_053119_nomask <- ref_extract(macaw_053119, shp = rows_2019， FUN = mean, buff = 0)
+rowmean_macaw_053119_1ft_nomask <- ref_extract(macaw_053119, shp = rows_2019_cen1ft， FUN = mean, buff = 0)
+rowmean_macaw_053119_2ft_nomask <- ref_extract(macaw_053119, shp = rows_2019_cen2ft， FUN = mean, buff = 0)
+rowmean_macaw_053119_3ft_nomask <- ref_extract(macaw_053119, shp = rows_2019_cen3ft， FUN = mean, buff = 0)
+rowmean_macaw_053119_nomask$Date <- "2019-05-31"
+rowmean_macaw_053119_1ft_nomask$Date <- "2019-05-31"
+rowmean_macaw_053119_2ft_nomask$Date <- "2019-05-31"
+rowmean_macaw_053119_3ft_nomask$Date <- "2019-05-31"
+
+#with mask
+rowmean_macaw_053119 <- ref_extract(macaw_053119_masked, shp = rows_2019， FUN = mean, buff = 0)
+rowmean_macaw_053119_1ft <- ref_extract(macaw_053119_masked, shp = rows_2019_cen1ft， FUN = mean, buff = 0)
+rowmean_macaw_053119_2ft <- ref_extract(macaw_053119_masked, shp = rows_2019_cen2ft， FUN = mean, buff = 0)
+rowmean_macaw_053119_3ft <- ref_extract(macaw_053119_masked, shp = rows_2019_cen3ft， FUN = mean, buff = 0)
+rowmean_macaw_053119$Date <- "2019-05-31"
+rowmean_macaw_053119_1ft$Date <- "2019-05-31"
+rowmean_macaw_053119_2ft$Date <- "2019-05-31"
+rowmean_macaw_053119_3ft$Date <- "2019-05-31"
+
+#output
+##without mask 
+write.csv(rowmean_macaw_053119_nomask, file.path(path_df, "rowmean_macaw_053119_nomask.csv"), row.names = FALSE)
+write.csv(rowmean_macaw_053119_1ft_nomask, file.path(path_df, "rowmean_macaw_053119_1ft_nomask.csv"), row.names = FALSE)
+write.csv(rowmean_macaw_053119_2ft_nomask, file.path(path_df, "rowmean_macaw_053119_2ft_nomask.csv"), row.names = FALSE)
+write.csv(rowmean_macaw_053119_3ft_nomask, file.path(path_df, "rowmean_macaw_053119_3ft_nomask.csv"), row.names = FALSE)
+##with mask 
+write.csv(rowmean_macaw_053119, file.path(path_df, "rowmean_macaw_053119.csv"), row.names = FALSE)
+write.csv(rowmean_macaw_053119_1ft, file.path(path_df, "rowmean_macaw_053119_1ft.csv"), row.names = FALSE)
+write.csv(rowmean_macaw_053119_2ft, file.path(path_df, "rowmean_macaw_053119_2ft.csv"), row.names = FALSE)
+write.csv(rowmean_macaw_053119_3ft, file.path(path_df, "rowmean_macaw_053119_3ft.csv"), row.names = FALSE)
+
+
+```
+
+###Without masks
+```{r}
+#rowmean 
+rowmean_macaw_053119_nomask <- ref_extract(macaw_053119, shp = rows_2019， FUN = mean, buff = 0)
+rowmean_macaw_062819_nomask <- ref_extract(macaw_062819, shp = rows_2019， FUN = mean, buff = 0)
+rowmean_macaw_080219_nomask <- ref_extract(macaw_080219, shp = rows_2019， FUN = mean, buff = 0)
+#rowmean_macaw_081019_nomask <- ref_extract(macaw_081019, shp = rows_2019， FUN = mean, buff = 0)
+rowmean_macaw_081519_nomask <- ref_extract(macaw_081519, shp = rows_2019， FUN = mean, buff = 0)
+rowmean_macaw_082219_nomask <- ref_extract(macaw_082219, shp = rows_2019， FUN = mean, buff = 0)
+
+#rowmean 1ft
+rowmean_macaw_053119_1ft_nomask <- ref_extract(macaw_053119, shp = rows_2019_cen1ft， FUN = mean, buff = 0)
+rowmean_macaw_062819_1ft_nomask <- ref_extract(macaw_062819, shp = rows_2019_cen1ft， FUN = mean, buff = 0)
+rowmean_macaw_080219_1ft_nomask <- ref_extract(macaw_080219, shp = rows_2019_cen1ft， FUN = mean, buff = 0)
+#rowmean_macaw_081019_1ft_nomask <- ref_extract(macaw_081019, shp = rows_2019_cen1ft， FUN = mean, buff = 0)
+rowmean_macaw_081519_1ft_nomask <- ref_extract(macaw_081519, shp = rows_2019_cen1ft， FUN = mean, buff = 0)
+rowmean_macaw_082219_1ft_nomask <- ref_extract(macaw_082219, shp = rows_2019_cen1ft， FUN = mean, buff = 0)
+
+#rowmean 2ft
+rowmean_macaw_053119_2ft_nomask <- ref_extract(macaw_053119, shp = rows_2019_cen2ft， FUN = mean, buff = 0)
+rowmean_macaw_062819_2ft_nomask <- ref_extract(macaw_062819, shp = rows_2019_cen2ft， FUN = mean, buff = 0)
+rowmean_macaw_080219_2ft_nomask <- ref_extract(macaw_080219, shp = rows_2019_cen2ft， FUN = mean, buff = 0)
+#rowmean_macaw_081019_2ft_nomask <- ref_extract(macaw_081019, shp = rows_2019_cen2ft， FUN = mean, buff = 0)
+rowmean_macaw_081519_2ft_nomask <- ref_extract(macaw_081519, shp = rows_2019_cen2ft， FUN = mean, buff = 0)
+rowmean_macaw_082219_2ft_nomask <- ref_extract(macaw_082219, shp = rows_2019_cen2ft， FUN = mean, buff = 0)
+
+#rowmean 3ft
+rowmean_macaw_053119_3ft_nomask <- ref_extract(macaw_053119, shp = rows_2019_cen3ft， FUN = mean, buff = 0)
+rowmean_macaw_062819_3ft_nomask <- ref_extract(macaw_062819, shp = rows_2019_cen3ft， FUN = mean, buff = 0)
+rowmean_macaw_080219_3ft_nomask <- ref_extract(macaw_080219, shp = rows_2019_cen3ft， FUN = mean, buff = 0)
+#rowmean_macaw_081019_3ft_nomask <- ref_extract(macaw_081019, shp = rows_2019_cen3ft， FUN = mean, buff = 0)
+rowmean_macaw_081519_3ft_nomask <- ref_extract(macaw_081519, shp = rows_2019_cen3ft， FUN = mean, buff = 0)
+rowmean_macaw_082219_3ft_nomask <- ref_extract(macaw_082219, shp = rows_2019_cen3ft， FUN = mean, buff = 0)
+
+
+#add date
+rowmean_macaw_062819_nomask$Date <- "2019-06-28"
+rowmean_macaw_080219_nomask$Date <- "2019-08-02"
+rowmean_macaw_081519_nomask$Date <- "2019-08-15"
+rowmean_macaw_082219_nomask$Date <- "2019-08-22"
+rowmean_macaw_062819_1ft_nomask$Date <- "2019-06-28"
+rowmean_macaw_080219_1ft_nomask$Date <- "2019-08-02"
+rowmean_macaw_081519_1ft_nomask$Date <- "2019-08-15"
+rowmean_macaw_082219_1ft_nomask$Date <- "2019-08-22"
+rowmean_macaw_062819_2ft_nomask$Date <- "2019-06-28"
+rowmean_macaw_080219_2ft_nomask$Date <- "2019-08-02"
+rowmean_macaw_081519_2ft_nomask$Date <- "2019-08-15"
+rowmean_macaw_082219_2ft_nomask$Date <- "2019-08-22"
+rowmean_macaw_062819_3ft_nomask$Date <- "2019-06-28"
+rowmean_macaw_080219_3ft_nomask$Date <- "2019-08-02"
+rowmean_macaw_081519_3ft_nomask$Date <- "2019-08-15"
+rowmean_macaw_082219_3ft_nomask$Date <- "2019-08-22"
 
 #combine them together
-rowmean_macaw_062819$Date <- as.Date("2019-06-28")
-rowmean_macaw_062819_1ft$Date <- as.Date("2019-06-28")
-rowmean_macaw_062819_2ft$Date <- as.Date("2019-06-28")
-rowmean_macaw_062819_3ft$Date <- as.Date("2019-06-28")
-rowmean_macaw_080219$Date <- as.Date("2019-08-02")
-rowmean_macaw_080219_1ft$Date <- as.Date("2019-08-02")
-rowmean_macaw_080219_2ft$Date <- as.Date("2019-08-02")
-rowmean_macaw_080219_3ft$Date <- as.Date("2019-08-02")
-rowmean_macaw_081019$Date <- as.Date("2019-08-10")
-rowmean_macaw_081019_1ft$Date <- as.Date("2019-08-10")
-rowmean_macaw_081019_2ft$Date <- as.Date("2019-08-10")
-rowmean_macaw_081019_3ft$Date <- as.Date("2019-08-10")
-rowmean_macaw_081519$Date <- as.Date("2019-08-15")
-rowmean_macaw_081519_1ft$Date <- as.Date("2019-08-15")
-rowmean_macaw_081519_2ft$Date <- as.Date("2019-08-15")
-rowmean_macaw_081519_3ft$Date <- as.Date("2019-08-15")
-rowmean_macaw_082219$Date <- as.Date("2019-08-22")
-rowmean_macaw_082219_1ft$Date <- as.Date("2019-08-22")
-rowmean_macaw_082219_2ft$Date <- as.Date("2019-08-22")
-rowmean_macaw_082219_3ft$Date <- as.Date("2019-08-22")
+rowmean_macaw_nomask <- rbind(rowmean_macaw_062819_nomask, rowmean_macaw_080219_nomask, rowmean_macaw_081519_nomask, rowmean_macaw_082219_nomask)
+rowmean_macaw_1ft_nomask <- rbind(rowmean_macaw_062819_1ft_nomask, rowmean_macaw_080219_1ft_nomask, rowmean_macaw_081519_1ft_nomask, rowmean_macaw_082219_1ft_nomask)
+rowmean_macaw_2ft_nomask <- rbind(rowmean_macaw_062819_2ft_nomask, rowmean_macaw_080219_2ft_nomask, rowmean_macaw_081519_2ft_nomask, rowmean_macaw_082219_2ft_nomask)
+rowmean_macaw_3ft_nomask <- rbind(rowmean_macaw_062819_3ft_nomask, rowmean_macaw_080219_3ft_nomask, rowmean_macaw_081519_3ft_nomask, rowmean_macaw_082219_3ft_nomask)
 
-rowmean_macaw <- rbind(rowmean_macaw_062819, rowmean_macaw_080219, rowmean_macaw_081019, rowmean_macaw_081519, rowmean_macaw_082219)
-rowmean_macaw_1ft <- rbind(rowmean_macaw_062819_1ft, rowmean_macaw_080219_1ft, rowmean_macaw_081019_1ft, rowmean_macaw_081519_1ft, rowmean_macaw_082219_1ft)
-rowmean_macaw_2ft <- rbind(rowmean_macaw_062819_2ft, rowmean_macaw_080219_2ft, rowmean_macaw_081019_2ft, rowmean_macaw_081519_2ft, rowmean_macaw_082219_2ft)
-rowmean_macaw_3ft <- rbind(rowmean_macaw_062819_3ft, rowmean_macaw_080219_3ft, rowmean_macaw_081019_3ft, rowmean_macaw_081519_3ft, rowmean_macaw_082219_3ft)
+#output
+write.csv(rowmean_macaw_nomask, file.path(path_df, "rowmean_macaw_nomask.csv"), row.names = FALSE)
+write.csv(rowmean_macaw_1ft_nomask, file.path(path_df, "rowmean_macaw_1ft_nomask.csv"), row.names = FALSE)
+write.csv(rowmean_macaw_2ft_nomask, file.path(path_df, "rowmean_macaw_2ft_nomask.csv"), row.names = FALSE)
+write.csv(rowmean_macaw_3ft_nomask, file.path(path_df, "rowmean_macaw_3ft_nomask.csv"), row.names = FALSE)
 
 ```
+###With masks
+```{r}
+rowmean_macaw_053119 <- ref_extract(macaw_053119_masked, shp = rows_2019， FUN = mean, buff = 0)
+rowmean_macaw_053119_1ft <- ref_extract(macaw_053119_masked, shp = rows_2019_cen1ft， FUN = mean, buff = 0)
+rowmean_macaw_053119_2ft <- ref_extract(macaw_053119_masked, shp = rows_2019_cen2ft， FUN = mean, buff = 0)
+rowmean_macaw_053119_3ft <- ref_extract(macaw_053119_masked, shp = rows_2019_cen3ft， FUN = mean, buff = 0)
+rowmean_macaw_053119$Date <- "2019-06-28"
+rowmean_macaw_053119_1ft$Date <- "2019-06-28"
+rowmean_macaw_053119_2ft$Date <- "2019-06-28"
+rowmean_macaw_053119_3ft$Date <- "2019-06-28"
+
+
+
+#rowmean 
+rowmean_macaw_062819 <- ref_extract(macaw_062819_masked, shp = rows_2019， FUN = mean, buff = 0)
+rowmean_macaw_080219 <- ref_extract(macaw_080219_masked, shp = rows_2019， FUN = mean, buff = 0)
+#rowmean_macaw_081019 <- ref_extract(macaw_081019_masked, shp = rows_2019， FUN = mean, buff = 0)
+rowmean_macaw_081519 <- ref_extract(macaw_081519_masked, shp = rows_2019， FUN = mean, buff = 0)
+rowmean_macaw_082219 <- ref_extract(macaw_082219_masked, shp = rows_2019， FUN = mean, buff = 0)
+
+#rowmean 1ft
+rowmean_macaw_062819_1ft <- ref_extract(macaw_062819_masked, shp = rows_2019_cen1ft， FUN = mean, buff = 0)
+rowmean_macaw_080219_1ft <- ref_extract(macaw_080219_masked, shp = rows_2019_cen1ft， FUN = mean, buff = 0)
+#rowmean_macaw_081019_1ft <- ref_extract(macaw_081019_masked, shp = rows_2019_cen1ft， FUN = mean, buff = 0)
+rowmean_macaw_081519_1ft <- ref_extract(macaw_081519_masked, shp = rows_2019_cen1ft， FUN = mean, buff = 0)
+rowmean_macaw_082219_1ft <- ref_extract(macaw_082219_masked, shp = rows_2019_cen1ft， FUN = mean, buff = 0)
+
+#rowmean 2ft
+rowmean_macaw_062819_2ft <- ref_extract(macaw_062819_masked, shp = rows_2019_cen2ft， FUN = mean, buff = 0)
+rowmean_macaw_080219_2ft <- ref_extract(macaw_080219_masked, shp = rows_2019_cen2ft， FUN = mean, buff = 0)
+#rowmean_macaw_081019_2ft <- ref_extract(macaw_081019_masked, shp = rows_2019_cen2ft， FUN = mean, buff = 0)
+rowmean_macaw_081519_2ft <- ref_extract(macaw_081519_masked, shp = rows_2019_cen2ft， FUN = mean, buff = 0)
+rowmean_macaw_082219_2ft <- ref_extract(macaw_082219_masked, shp = rows_2019_cen2ft， FUN = mean, buff = 0)
+
+#rowmean 3ft
+rowmean_macaw_062819_3ft <- ref_extract(macaw_062819_masked, shp = rows_2019_cen3ft， FUN = mean, buff = 0)
+rowmean_macaw_080219_3ft <- ref_extract(macaw_080219_masked, shp = rows_2019_cen3ft， FUN = mean, buff = 0)
+#rowmean_macaw_081019_3ft <- ref_extract(macaw_081019_masked, shp = rows_2019_cen3ft， FUN = mean, buff = 0)
+rowmean_macaw_081519_3ft <- ref_extract(macaw_081519_masked, shp = rows_2019_cen3ft， FUN = mean, buff = 0)
+rowmean_macaw_082219_3ft <- ref_extract(macaw_082219_masked, shp = rows_2019_cen3ft， FUN = mean, buff = 0)
+
+
+#add date
+rowmean_macaw_062819$Date <- "2019-06-28"
+rowmean_macaw_080219$Date <- "2019-08-02"
+rowmean_macaw_081519$Date <- "2019-08-15"
+rowmean_macaw_082219$Date <- "2019-08-22"
+rowmean_macaw_062819_1ft$Date <- "2019-06-28"
+rowmean_macaw_080219_1ft$Date <- "2019-08-02"
+rowmean_macaw_081519_1ft$Date <- "2019-08-15"
+rowmean_macaw_082219_1ft$Date <- "2019-08-22"
+rowmean_macaw_062819_2ft$Date <- "2019-06-28"
+rowmean_macaw_080219_2ft$Date <- "2019-08-02"
+rowmean_macaw_081519_2ft$Date <- "2019-08-15"
+rowmean_macaw_082219_2ft$Date <- "2019-08-22"
+rowmean_macaw_062819_3ft$Date <- "2019-06-28"
+rowmean_macaw_080219_3ft$Date <- "2019-08-02"
+rowmean_macaw_081519_3ft$Date <- "2019-08-15"
+rowmean_macaw_082219_3ft$Date <- "2019-08-22"
+
+#combine them together
+rowmean_macaw <- rbind(rowmean_macaw_062819, rowmean_macaw_080219, rowmean_macaw_081519, rowmean_macaw_082219)
+rowmean_macaw_1ft <- rbind(rowmean_macaw_062819_1ft, rowmean_macaw_080219_1ft, rowmean_macaw_081519_1ft, rowmean_macaw_082219_1ft)
+rowmean_macaw_2ft <- rbind(rowmean_macaw_062819_2ft, rowmean_macaw_080219_2ft, rowmean_macaw_081519_2ft, rowmean_macaw_082219_2ft)
+rowmean_macaw_3ft <- rbind(rowmean_macaw_062819_3ft, rowmean_macaw_080219_3ft, rowmean_macaw_081519_3ft, rowmean_macaw_082219_3ft)
+
+```
+
+
+##(Useless currently)Extract row average after mask
+```{r}
+rowmean_pri_082219_2ft <- ref_extract(pri_082219_masked, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
+rowmean_pri_082219_3ft <- ref_extract(pri_082219_masked, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
+rowmean_pri_081519_2ft <- ref_extract(pri_081519_masked, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
+rowmean_pri_081519_3ft <- ref_extract(pri_081519_masked, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
+rowmean_pri_081019_2ft <- ref_extract(pri_081019_masked, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
+rowmean_pri_081019_3ft <- ref_extract(pri_081019_masked, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
+rowmean_pri_080219_2ft <- ref_extract(pri_080219_masked, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
+rowmean_pri_080219_3ft <- ref_extract(pri_080219_masked, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
+rowmean_pri_062819_2ft <- ref_extract(pri_062819_masked, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
+rowmean_pri_062819_3ft <- ref_extract(pri_062819_masked, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
+rowmean_pri_062819_2ft$Date <- as.Date("2019-06-28")
+rowmean_pri_062819_3ft$Date <- as.Date("2019-06-28")
+rowmean_pri_080219_2ft$Date <- as.Date("2019-08-02")
+rowmean_pri_080219_3ft$Date <- as.Date("2019-08-02")
+rowmean_pri_081019_2ft$Date <- as.Date("2019-08-10")
+rowmean_pri_081019_3ft$Date <- as.Date("2019-08-10")
+rowmean_pri_081519_2ft$Date <- as.Date("2019-08-15")
+rowmean_pri_081519_3ft$Date <- as.Date("2019-08-15")
+rowmean_pri_082219_2ft$Date <- as.Date("2019-08-22")
+rowmean_pri_082219_3ft$Date <- as.Date("2019-08-22")
+rowmean_pri <- rbind(rowmean_pri_062819, rowmean_pri_080219, rowmean_pri_081019, rowmean_pri_081519, rowmean_pri_082219)
+rowmean_pri_1ft <- rbind(rowmean_pri_062819_1ft, rowmean_pri_080219_1ft, rowmean_pri_081019_1ft, rowmean_pri_081519_1ft, rowmean_pri_082219_1ft)
+rowmean_pri_2ft <- rbind(rowmean_pri_062819_2ft, rowmean_pri_080219_2ft, rowmean_pri_081019_2ft, rowmean_pri_081519_2ft, rowmean_pri_082219_2ft)
+rowmean_pri_3ft <- rbind(rowmean_pri_062819_3ft, rowmean_pri_080219_3ft, rowmean_pri_081019_3ft, rowmean_pri_081519_3ft, rowmean_pri_082219_3ft)
+path_df_server <- "/z0/zt92/Tomato_biomass/tomato_analysis_2019/dataframes"
+#path_df <- "C:/Users/zt92/Box Sync/BIOSTIMULANT FIELD SCREENING MASTER FOLDER/DRONE/macaw_pri/dataframes"
+write.csv(rowmean_pri, file.path(path_df_server, "rowmean_pri.csv"), row.names = FALSE)
+write.csv(rowmean_pri_1ft, file.path(path_df_server, "rowmean_pri_1ft.csv"), row.names = FALSE)
+write.csv(rowmean_pri_2ft, file.path(path_df_server, "rowmean_pri_2ft.csv"), row.names = FALSE)
+write.csv(rowmean_pri_3ft, file.path(path_df_server, "rowmean_pri_3ft.csv"), row.names = FALSE)
+
+
+#0822
+rowmean_pri_082219 <- ref_extract(pri_082219_masked, shp = rows_2019, FUN = mean, buff = 0)
+rowmean_pri_082219_1ft <- ref_extract(pri_082219_masked, shp = rows_2019_cen1ft, FUN = mean, buff = 0)
+rowmean_pri_082219_2ft <- ref_extract(pri_082219_masked, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
+rowmean_pri_082219_3ft <- ref_extract(pri_082219_masked, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
+rowmean_pri_082219$Date <- as.Date("2019-08-22")
+rowmean_pri_082219_1ft$Date <- as.Date("2019-08-22")
+rowmean_pri_082219_2ft$Date <- as.Date("2019-08-22")
+rowmean_pri_082219_3ft$Date <- as.Date("2019-08-22")
+
+
+#0815
+rowmean_pri_081519 <- ref_extract(pri_081519_masked, shp = rows_2019, FUN = mean, buff = 0)
+rowmean_pri_081519_1ft <- ref_extract(pri_081519_masked, shp = rows_2019_cen1ft, FUN = mean, buff = 0)
+rowmean_pri_081519_2ft <- ref_extract(pri_081519_masked, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
+rowmean_pri_081519_3ft <- ref_extract(pri_081519_masked, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
+rowmean_pri_081519$Date <- as.Date("2019-08-15")
+rowmean_pri_081519_1ft$Date <- as.Date("2019-08-15")
+rowmean_pri_081519_2ft$Date <- as.Date("2019-08-15")
+rowmean_pri_081519_3ft$Date <- as.Date("2019-08-15")
+save.image("/z0/zt92/Tomato_biomass/tomato_analysis_2019/dataframes/envir1.RData")
+
+
+#0810
+rowmean_pri_081019 <- ref_extract(pri_081019_masked, shp = rows_2019, FUN = mean, buff = 0)
+rowmean_pri_081019_1ft <- ref_extract(pri_081019_masked, shp = rows_2019_cen1ft, FUN = mean, buff = 0)
+rowmean_pri_081019_2ft <- ref_extract(pri_081019_masked, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
+rowmean_pri_081019_3ft <- ref_extract(pri_081019_masked, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
+rowmean_pri_081019$Date <- as.Date("2019-08-10")
+rowmean_pri_081019_1ft$Date <- as.Date("2019-08-10")
+rowmean_pri_081019_2ft$Date <- as.Date("2019-08-10")
+rowmean_pri_081019_3ft$Date <- as.Date("2019-08-10")
+save.image("/z0/zt92/Tomato_biomass/tomato_analysis_2019/dataframes/envir2.RData")
+
+
+#0802
+rowmean_pri_080219 <- ref_extract(pri_080219_masked, shp = rows_2019, FUN = mean, buff = 0)
+rowmean_pri_080219_1ft <- ref_extract(pri_080219_masked, shp = rows_2019_cen1ft, FUN = mean, buff = 0)
+rowmean_pri_080219_2ft <- ref_extract(pri_080219_masked, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
+rowmean_pri_080219_3ft <- ref_extract(pri_080219_masked, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
+rowmean_pri_080219$Date <- as.Date("2019-08-02")
+rowmean_pri_080219_1ft$Date <- as.Date("2019-08-02")
+rowmean_pri_080219_2ft$Date <- as.Date("2019-08-02")
+rowmean_pri_080219_3ft$Date <- as.Date("2019-08-02")
+save.image("/z0/zt92/Tomato_biomass/tomato_analysis_2019/dataframes/envir3.RData")
+
+
+
+#0628
+rowmean_pri_062819 <- ref_extract(pri_062819_masked, shp = rows_2019, FUN = mean, buff = 0)
+rowmean_pri_062819_1ft <- ref_extract(pri_062819_masked, shp = rows_2019_cen1ft, FUN = mean, buff = 0)
+rowmean_pri_062819_2ft <- ref_extract(pri_062819_masked, shp = rows_2019_cen2ft, FUN = mean, buff = 0)
+rowmean_pri_062819_3ft <- ref_extract(pri_062819_masked, shp = rows_2019_cen3ft, FUN = mean, buff = 0)
+rowmean_pri_062819$Date <- as.Date("2019-06-28")
+rowmean_pri_062819_1ft$Date <- as.Date("2019-06-28")
+rowmean_pri_062819_2ft$Date <- as.Date("2019-06-28")
+rowmean_pri_062819_3ft$Date <- as.Date("2019-06-28")
+save.image("/z0/zt92/Tomato_biomass/tomato_analysis_2019/dataframes/envir4.RData")
+
+#combine them together
+names(rowmean_pri_062819)[2] <- "PRI"
+names(rowmean_pri_062819_1ft)[2] <- "PRI"
+names(rowmean_pri_062819_2ft)[2] <- "PRI"
+names(rowmean_pri_062819_3ft)[2] <- "PRI"
+names(rowmean_pri_080219)[2] <- "PRI"
+names(rowmean_pri_080219_1ft)[2] <- "PRI"
+names(rowmean_pri_080219_2ft)[2] <- "PRI"
+names(rowmean_pri_080219_3ft)[2] <- "PRI"
+names(rowmean_pri_081019)[2] <- "PRI"
+names(rowmean_pri_081019_1ft)[2] <- "PRI"
+names(rowmean_pri_081019_2ft)[2] <- "PRI"
+names(rowmean_pri_081019_3ft)[2] <- "PRI"
+names(rowmean_pri_081519)[2] <- "PRI"
+names(rowmean_pri_081519_1ft)[2] <- "PRI"
+names(rowmean_pri_081519_2ft)[2] <- "PRI"
+names(rowmean_pri_081519_3ft)[2] <- "PRI"
+names(rowmean_pri_082219)[2] <- "PRI"
+names(rowmean_pri_082219_1ft)[2] <- "PRI"
+names(rowmean_pri_082219_2ft)[2] <- "PRI"
+names(rowmean_pri_082219_3ft)[2] <- "PRI"
+
+
+
+rowmean_pri <- rbind(rowmean_pri_062819, rowmean_pri_080219, rowmean_pri_081019, rowmean_pri_081519, rowmean_pri_082219)
+rowmean_pri_1ft <- rbind(rowmean_pri_062819_1ft, rowmean_pri_080219_1ft, rowmean_pri_081019_1ft, rowmean_pri_081519_1ft, rowmean_pri_082219_1ft)
+rowmean_pri_2ft <- rbind(rowmean_pri_062819_2ft, rowmean_pri_080219_2ft, rowmean_pri_081019_2ft, rowmean_pri_081519_2ft, rowmean_pri_082219_2ft)
+rowmean_pri_3ft <- rbind(rowmean_pri_062819_3ft, rowmean_pri_080219_3ft, rowmean_pri_081019_3ft, rowmean_pri_081519_3ft, rowmean_pri_082219_3ft)
+
+path_df_server <- "/z0/zt92/Tomato_biomass/tomato_analysis_2019/dataframes"
+#path_df <- "C:/Users/zt92/Box Sync/BIOSTIMULANT FIELD SCREENING MASTER FOLDER/DRONE/macaw_pri/dataframes"
+write.csv(rowmean_pri, file.path(path_df_server, "rowmean_pri.csv"), row.names = FALSE)
+write.csv(rowmean_pri_1ft, file.path(path_df_server, "rowmean_pri_1ft.csv"), row.names = FALSE)
+write.csv(rowmean_pri_2ft, file.path(path_df_server, "rowmean_pri_2ft.csv"), row.names = FALSE)
+write.csv(rowmean_pri_3ft, file.path(path_df_server, "rowmean_pri_3ft.csv"), row.names = FALSE)
+
+```
+
+#Calculate useful vegetation indices
+##Functions
+```{r}
+#Structure Indices 
+NDVI <- function(macaw){
+  red <- macaw$X670
+  nir <- macaw$X800
+  ndvi <- (nir-red)/(nir+red)
+  return(ndvi)
+}
+
+RDVI <- function(macaw){
+  red <- macaw$X670
+  nir <- macaw$X800
+  rdvi <- (nir-red)/(nir+red)^0.5
+  return(rdvi)
+}
+
+#Chl Indices
+MCARI <- function(macaw){
+  x700 <- macaw$X700
+  x670 <- macaw$X670
+  x550 <- macaw$X550
+  mcari <- ((x700-x670)-0.2*(x700-x550))*(x700/x670)
+  return(mcari)
+}
+
+TCARI <- function(macaw){
+  x700 <- macaw$X700
+  x670 <- macaw$X670
+  x550 <- macaw$X550
+  tcari <- 3*((x700-x670)-0.2*(x700-x550)*(x700/x670))
+  return(tcari)
+}
+
+TCARI.OSAVI <- function(macaw){
+  x700 <- macaw$X700
+  x670 <- macaw$X670
+  x550 <- macaw$X550
+  x800 <- macaw$X800
+  tcari <- 3*((x700-x670)-0.2*(x700-x550)*(x700/x670))
+  osavi <- ((1+0.16)*(x800-x670)/(x800+x670+0.16))
+  tcari.osavi <- tcari/osavi
+  return(tcari.osavi)
+}
+
+RER <- function(macaw){
+  x700 <- macaw$X700
+  x670 <- macaw$X670
+  rer <- x700/x670
+  return(rer)
+}
+
+#xanthophyll Indice
+
+PRI <- function(macaw){
+  x530 <- macaw$X530
+  x570 <- macaw$X570
+  pri <- (x530-x570)/(x530+x570)
+  return(pri)
+}
+
+PRI550 <- function(macaw){
+  x530 <- macaw$X530
+  x550 <- macaw$X550
+  pri550 <- (x530-x550)/(x530+x550)
+  return(pri550)
+}
+
+PRInorm <- function(macaw){
+  #pri
+  x530 <- macaw$X530
+  x570 <- macaw$X570
+  pri <- (x530-x570)/(x530+x570)
+  #rdvi
+  red <- macaw$X670
+  nir <- macaw$X800
+  rdvi <- (nir-red)/(nir+red)^0.5
+  #rer
+  x700 <- macaw$X700
+  x670 <- macaw$X670
+  rer <- x700/x670
+  #PRInorm
+  prinorm <- pri/(rdvi*rer)
+  return(prinorm)
+}
+
+PRInorm550 <- function(macaw){
+  #pri550
+  x530 <- macaw$X530
+  x550 <- macaw$X550
+  pri550 <- (x530-x550)/(x530+x550)
+  #rdvi
+  red <- macaw$X670
+  nir <- macaw$X800
+  rdvi <- (nir-red)/(nir+red)^0.5
+  #rer
+  x700 <- macaw$X700
+  x670 <- macaw$X670
+  rer <- x700/x670
+  #PRInorm
+  prinorm550 <- pri550/(rdvi*rer)
+  return(prinorm550)
+}
+
+#Water Indices
+WI <- function(macaw){
+  x900 <- macaw$X900
+  x970 <- macaw$X970
+  wi <- x900/x970
+  return(wi)
+}
+
+WI.NDVI <- function(macaw){
+  x900 <- macaw$X900
+  x970 <- macaw$X970
+  wi <- x900/x970
+  red <- macaw$X670
+  nir <- macaw$X800
+  ndvi <- (nir-red)/(nir+red)
+  return(wi/ndvi)
+}
+
+```
+
+##Apply the functions
+###with vegetation mask
+```{r}
+#convert DN to reflectance
+flagmean_macaw[,2:13] <- flagmean_macaw[,2:13]/65535
+flagmean_macaw$ndvi <- NDVI(flagmean_macaw)
+flagmean_macaw$pri <- PRI(flagmean_macaw)
+flagmean_macaw$wi <- WI(flagmean_macaw)
+flagmean_macaw$wi.ndvi <- WI.NDVI(flagmean_macaw)
+flagmean_macaw$mcawi <- MCARI(flagmean_macaw)
+flagmean_macaw$tcari.osavi <- TCARI.OSAVI(flagmean_macaw)
+flagmean_macaw$tcari <- TCARI(flagmean_macaw)
+flagmean_macaw$pri550 <- PRI550(flagmean_macaw)
+flagmean_macaw$prinorm <- PRInorm(flagmean_macaw)
+flagmean_macaw$prinorm550 <- PRInorm550(flagmean_macaw)
+flagmean_macaw$rer <- RER(flagmean_macaw)
+flagmean_macaw$rdvi <- RDVI(flagmean_macaw)fe
+
+
+#output
+write.csv(flagmean_macaw, file.path(path_df, "flagmean_macaw.csv"), row.names = FALSE)
+write.csv(rowmean_macaw, file.path(path_df, "rowmean_macaw.csv"), row.names = FALSE)
+write.csv(rowmean_macaw_1ft, file.path(path_df, "rowmean_macaw_1ft.csv"), row.names = FALSE)
+write.csv(rowmean_macaw_2ft, file.path(path_df, "rowmean_macaw_2ft.csv"), row.names = FALSE)
+write.csv(rowmean_macaw_3ft, file.path(path_df, "rowmean_macaw_3ft.csv"), row.names = FALSE)
+
+```
+###with fruti mask
+```{r}
+names(flagmean_macaw_exgexrmask)
+
+flagmean_macaw_exgexrmask[,2:13] <- flagmean_macaw_exgexrmask[,2:13]/65535
+flagmean_macaw_exgexrmask$ndvi <- NDVI(flagmean_macaw_exgexrmask)
+flagmean_macaw_exgexrmask$pri <- PRI(flagmean_macaw_exgexrmask)
+flagmean_macaw_exgexrmask$wi <- WI(flagmean_macaw_exgexrmask)
+flagmean_macaw_exgexrmask$wi.ndvi <- WI.NDVI(flagmean_macaw_exgexrmask)
+flagmean_macaw_exgexrmask$mcawi <- MCARI(flagmean_macaw_exgexrmask)
+flagmean_macaw_exgexrmask$tcari.osavi <- TCARI.OSAVI(flagmean_macaw_exgexrmask)
+flagmean_macaw_exgexrmask$tcari <- TCARI(flagmean_macaw_exgexrmask)
+flagmean_macaw_exgexrmask$pri550 <- PRI550(flagmean_macaw_exgexrmask)
+flagmean_macaw_exgexrmask$prinorm <- PRInorm(flagmean_macaw_exgexrmask)
+flagmean_macaw_exgexrmask$prinorm550 <- PRInorm550(flagmean_macaw_exgexrmask)
+flagmean_macaw_exgexrmask$rer <- RER(flagmean_macaw_exgexrmask)
+flagmean_macaw_exgexrmask$rdvi <- RDVI(flagmean_macaw_exgexrmask)
+
+path_df <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/dataframes"
+write.csv(flagmean_macaw_exgexrmask, file.path(path_df, "flagmean_macaw_exgexrmask.csv"), row.names = FALSE)
+```
+
+#----------Read data from csv-------------------
+#Read extracted csv files
+```{r}
+path_df <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/dataframes"
+flagmean_macaw <- read.csv(file.path(path_df, "flagmean_macaw.csv"))
+head(flagmean_macaw)
+flagmean_macaw_exgexrmask <- read.csv(file.path(path_df, "flagmean_macaw_exgexrmask.csv"))
+head(flagmean_macaw_exgexrmask)
+#merge with the shapefile data to include the plant
+path_shp <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/shapefiles"
+#use the adjusted one
+flagbuff_2019 <- shapefile(file.path(path_shp, "flags_tomato_2019_adj_buffer.shp"))
+flagmean_macaw <- merge(flagmean_macaw, flagbuff_2019@data[,c("Row","id","Plant")], by = c("Row","id"))
+flagmean_macaw_exgexrmask <- merge(flagmean_macaw_exgexrmask, flagbuff_2019@data[,c("Row","id","Plant")], by = c("Row","id"))
+#remove 08-22 data
+flagmean_macaw <- subs
+et(flagmean_macaw, Date!="2019-08-22")
+```
+#Micasense vs MACAW
+##Plot the trend of NDVI
+```{r}
+ggplot(flagmean_uav_nomask)
+```
+
+
+#Ground Measurements
+##Read SWP 
+```{r}
+path_swp <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/PHYSIOLOGICAL DATA/SWP"
+files_swp <- list.files(path_swp, full.names = TRUE)
+list_swp <- list()
+for(i in 1:length(files_swp)){
+  temp_df <- read_xlsx(files_swp[i])[,1:5]
+  list_swp[[i]] <- temp_df
+}
+files_swp
+names(list_swp) <- c("2019-05-31","2019-06-11","2019-06-26","2019-07-17","2019-07-25","2019-08-01","2019-08-08","2019-08-14")
+
+#Add date column 
+for(i in 1:length(list_swp)){
+  list_swp[[i]]$Date <- as.Date(names(list_swp)[i])
+}
+list_swp[[8]]
+
+#rbind them together
+swp_PL <- do.call(rbind, list_swp)
+head(swp_PL)
+tail(swp_PL)
+
+names(flagmean_macaw)
+#change names 
+names(swp_PL) <- c("Block","Plot","Treatment","Plant","SWP", "Date")
+
+#aggregate by row
+class(swp_PL$SWP)
+swp_PL$SWP <- as.numeric(swp_PL$SWP)
+sum(is.na(swp_PL$SWP))
+dim(swp_PL)  #1070, 6
+
+rowflagmean_swp <- aggregate(swp_PL$SWP, by = list("Block"=swp_PL$Block, "Plot"=swp_PL$Plot, "Treatment"=swp_PL$Treatment, "Date"=swp_PL$Date), FUN = function(x){mean(x, na.rm=TRUE)})
+names(rowflagmean_swp)[5] <- "SWP"
+#rowflagmean_macaw_swp <- aggregate(swp_PL$SWP, by = list("Block"=swp_PL$Block, "Plot"=swp_PL$Plot, "Treatment"=swp_PL$Treatment, "Date"=swp_PL$Date), FUN = function(x){mean(x, na.rm=TRUE)})
+#names(rowflagmean_macaw_swp)[5] <- "SWP"
+
+sum(is.na(rowflagmean_macaw_swp$x))
+dim(rowflagmean_macaw_swp) #140, 6
+
+```
+##Read LiCOR
+```{r}
+path_licor <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/dataframes/Physiology_Measurement/LICOR"
+files_licor <- list.files(path_licor, full.names = TRUE)
+files_licor
+list_licor <- list()
+
+for(i in 1:length(files_licor)){
+  temp_df <- read_xlsx(files_licor[i], sheet = "COMBINED")[,c("Block","Treatment","Plot","Plant.Num","Photo","Cond")]
+  list_licor[[i]] <- temp_df
+}
+names(list_licor) <- c("2019-05-31","2019-06-11","2019-06-26","2019-07-17","2019-07-25","2019-08-01","2019-08-08","2019-08-14")
+for(i in 1:length(list_licor)){
+  list_licor[[i]]$Date <- as.Date(names(list_licor)[i])
+}
+licor_PL <- do.call(rbind, list_licor)
+
+names(licor_PL)
+names(licor_PL)[4] <- "Plant"
+
+rowflagmean_licor <- aggregate(licor_PL[5:6], by = list("Block"=licor_PL$Block, "Plot"=licor_PL$Plot, "Treatment"=licor_PL$Treatment, "Date"=licor_PL$Date), FUN = function(x){mean(x, na.rm=TRUE)})
+#rowflagmean_macaw_swp <- aggregate(swp_PL$SWP, by = list("Block"=swp_PL$Block, "Plot"=swp_PL$Plot, "Treatment"=swp_PL$Treatment, "Date"=swp_PL$Date), FUN = function(x){mean(x, na.rm=TRUE)})
+#sum(is.na(rowflagmean_macaw_swp$x))
+#dim(rowflagmean_macaw_swp) #140, 6
+#names(rowflagmean_macaw_swp)[5] <- "SWP"
+
+```
+##Read Chlorophyll
+```{r}
+path_chl <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/dataframes/Physiology_Measurement/CHL"
+files_chl <- list.files(path_chl, full.names = TRUE)
+files_chl
+list_chl <- list()
+for(i in 1:length(files_chl)){
+  temp_df <- read_xlsx(files_chl[i], sheet = 1)[,c("PLOT","TREATMENT","PLANT","CHL")]
+  list_chl[[i]] <- temp_df
+}
+names(list_chl) <- c("2019-05-31","2019-06-11","2019-06-25","2019-06-26","2019-07-17","2019-07-25","2019-08-01","2019-08-08","2019-08-14")
+
+for(i in 1:length(list_chl)){
+  list_chl[[i]]$Date <- as.Date(names(list_chl)[i])
+}
+chl_PL <- do.call(rbind, list_chl)
+names(chl_PL) <- c("Plot","Treatment","Plant","CHL","Date")
+```
+##Read IRT
+```{r}
+path_irt <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/dataframes/Physiology_Measurement/IRT"
+files_irt <- list.files(path_irt, full.names = TRUE)
+files_irt
+list_irt <- list()
+for(i in 1:length(files_irt)){
+  temp_df <- read_xlsx(files_irt[i], sheet = 1)[,c("PLOT","TREATMENT","PLANT","TEMP","EDITED TIME")]
+  list_irt[[i]] <- temp_df
+}
+names(list_irt) <- c("2019-05-31","2019-06-11","2019-06-25","2019-06-25","2019-06-26","2019-07-17","2019-07-25","2019-08-01","2019-08-08","2019-08-14")
+for(i in 1:length(list_irt)){
+  list_irt[[i]]$Date <- as.Date(names(list_irt)[i])
+}
+irt_PL <- do.call(rbind, list_irt)
+names(irt_PL) <- c("Plot","Treatment","Plant","IRT","MeasureTime","Date")
+```
+##Combine ground measurement together
+```{r}
+phys_PL <- merge(swp_PL, licor_PL, by = c("Block","Plot","Treatment","Plant","Date"))
+#phys_PL <- merge(phys_PL, chl_PL, by = c("Plot","Treatment","Plant","Date"))
+#phys_PL <- merge(phys_PL, irt_PL, by = c("Plot","Treatment","Plant","Date"))
+dim(phys_PL)
+sum(is.na(phys_PL))
+View(phys_PL)
+
+phys_PL <- merge(irt_PL, chl_PL, by = c("Plot","Treatment","Plant","Date"))
+head(phys_PL)
+dim(phys_PL)  #1360
+
+phys_PL <- merge(phys_PL, licor_PL, by = c("Plot","Treatment","Plant","Date"))
+head(phys_PL)
+dim(phys_PL)  #1126
+
+phys_PL <- merge(phys_PL, swp_PL, by = c("Block","Plot","Treatment","Plant","Date"))
+head(phys_PL)
+dim(phys_PL)  #1101
+```
+##Combine with macaw data
+```{r}
+#flagmean_macaw$Date <- as.Date(flagmean_macaw$Date)
+#unique(flagmean_macaw$Date)
+flagmean_macaw_exgexrmask$Date <- as.Date(flagmean_macaw_exgexrmask$Date)
+unique(flagmean_macaw_exgexrmask$Date)
+unique(phys_PL$Date)
+
+for(i in 1:dim(phys_PL)[1]){
+  if(phys_PL[i,]$Date=="2019-06-26"){
+    phys_PL[i,]$Date= "2019-06-28"
+  }
+  if(phys_PL[i,]$Date=="2019-08-01"){
+    phys_PL[i,]$Date="2019-08-02"
+  }
+  if(phys_PL[i,]$Date=="2019-08-14"){
+    phys_PL[i,]$Date="2019-08-15"
+  }
+}
+
+phys_PL$Block <- as.character(phys_PL$Block)
+flagmean_macaw_exgexrmask_phys <- base::merge(flagmean_macaw_exgexrmask, phys_PL, by = c("Block","Treatment","Plant","Date"))
+head(flagmean_macaw_exgexrmask_phys)
+dim(flagmean_macaw_exgexrmask_phys)  #315, 40
+dim(subset(flagmean_macaw_exgexrmask_phys, Date=="2019-06-28"))  #120,40
+dim(subset(flagmean_macaw_exgexrmask_phys, Date=="2019-08-02")) #120,40
+dim(subset(flagmean_macaw_exgexrmask_phys, Date=="2019-08-15")) #75, 40, this is because the phys data only contains 75 rows 
+
+
+#flagmean_macaw_phys <- base::merge(flagmean_macaw, phys_PL, by = c("Block","Treatment","Plant","Date"))
+head(flagmean_macaw_phys)
+dim(flagmean_macaw_phys)  #315, 28
+unique(flagmean_macaw_phys$Date)  
+dim(subset(flagmean_macaw_phys, Date=="2019-06-28"))  #120
+dim(subset(flagmean_macaw_phys, Date=="2019-08-02")) #120
+dim(subset(flagmean_macaw_phys, Date=="2019-08-15")) #75
+
+View(subset(flagmean_macaw_phys, Date=="2019-06-28"))
+head(flagmean_macaw_phys)
+
+#change classes
+##veg mask
+flagmean_macaw_phys$Block <- as.factor(flagmean_macaw_phys$Block)
+flagmean_macaw_phys$Plant <- as.factor(as.character(flagmean_macaw_phys$Plant))
+flagmean_macaw_phys$Plot <- as.factor(flagmean_macaw_phys$Plot)
+flagmean_macaw_phys$SWP <- as.numeric(flagmean_macaw_phys$SWP)
+flagmean_macaw_phys$CHL <- as.numeric(flagmean_macaw_phys$CHL)
+##fruit mask
+flagmean_macaw_exgexrmask_phys$Block <- as.factor(flagmean_macaw_exgexrmask_phys$Block)
+flagmean_macaw_exgexrmask_phys$Plant <- as.factor(as.character(flagmean_macaw_exgexrmask_phys$Plant))
+flagmean_macaw_exgexrmask_phys$Plot <- as.factor(flagmean_macaw_exgexrmask_phys$Plot)
+flagmean_macaw_exgexrmask_phys$SWP <- as.numeric(flagmean_macaw_exgexrmask_phys$SWP)
+flagmean_macaw_exgexrmask_phys$CHL <- as.numeric(flagmean_macaw_exgexrmask_phys$CHL)
+
+```
+###Only SWP
+```{r}
+#flagmean_macaw$Date <- as.Date(flagmean_macaw$Date)
+#unique(flagmean_macaw$Date)
+flagmean_macaw_exgexrmask$Date <- as.Date(flagmean_macaw_exgexrmask$Date)
+unique(flagmean_macaw_exgexrmask$Date)
+unique(swp_PL$Date)
+
+for(i in 1:dim(swp_PL)[1]){
+  if(swp_PL[i,]$Date=="2019-06-26"){
+    swp_PL[i,]$Date= "2019-06-28"
+  }
+  if(swp_PL[i,]$Date=="2019-08-01"){
+    swp_PL[i,]$Date="2019-08-02"
+  }
+  if(swp_PL[i,]$Date=="2019-08-14"){
+    swp_PL[i,]$Date="2019-08-15"
+  }
+}
+
+swp_PL$Block <- as.character(swp_PL$Block)
+flagmean_macaw_exgexrmask_swp <- base::merge(flagmean_macaw_exgexrmask, swp_PL, by = c("Block","Treatment","Plant","Date"))
+head(flagmean_macaw_exgexrmask_swp)
+dim(flagmean_macaw_exgexrmask_swp)  #315, 40
+dim(subset(flagmean_macaw_exgexrmask_swp, Date=="2019-06-28"))  #120,40
+dim(subset(flagmean_macaw_exgexrmask_swp, Date=="2019-08-02")) #120,40
+dim(subset(flagmean_macaw_exgexrmask_swp, Date=="2019-08-15")) #90, 35
+
+#flagmean_macaw_swp <- base::merge(flagmean_macaw, swp_PL, by = c("Block","Treatment","Plant","Date"))
+head(flagmean_macaw_swp)
+dim(flagmean_macaw_swp)  #315, 28
+unique(flagmean_macaw_swp$Date)  
+dim(subset(flagmean_macaw_swp, Date=="2019-06-28"))  #120
+dim(subset(flagmean_macaw_swp, Date=="2019-08-02")) #120
+dim(subset(flagmean_macaw_swp, Date=="2019-08-15")) #75
+
+View(subset(flagmean_macaw_swp, Date=="2019-06-28"))
+head(flagmean_macaw_swp)
+
+#change classes
+##veg mask
+flagmean_macaw_swp$Block <- as.factor(flagmean_macaw_swp$Block)
+flagmean_macaw_swp$Plant <- as.factor(as.character(flagmean_macaw_swp$Plant))
+flagmean_macaw_swp$Plot <- as.factor(flagmean_macaw_swp$Plot)
+flagmean_macaw_swp$SWP <- as.numeric(flagmean_macaw_swp$SWP)
+#flagmean_macaw_swp$CHL <- as.numeric(flagmean_macaw_swp$CHL)
+##fruit mask
+flagmean_macaw_exgexrmask_swp$Block <- as.factor(flagmean_macaw_exgexrmask_swp$Block)
+flagmean_macaw_exgexrmask_swp$Plant <- as.factor(as.character(flagmean_macaw_exgexrmask_swp$Plant))
+flagmean_macaw_exgexrmask_swp$Plot <- as.factor(flagmean_macaw_exgexrmask_swp$Plot)
+flagmean_macaw_exgexrmask_swp$SWP <- as.numeric(flagmean_macaw_exgexrmask_swp$SWP)
+#flagmean_macaw_exgexrmask_swp$CHL <- as.numeric(flagmean_macaw_exgexrmask_swp$CHL)
+
+```
+
+#Add some indices
+```{r}
+
+flagmean_macaw_phys$ndvi <- NDVI(flagmean_macaw_phys)
+flagmean_macaw_phys$pri <- PRI(flagmean_macaw_phys)
+flagmean_macaw_phys$wi <- WI(flagmean_macaw_phys)
+flagmean_macaw_phys$wi.ndvi <- WI.NDVI(flagmean_macaw_phys)
+flagmean_macaw_phys$mcawi <- MCARI(flagmean_macaw_phys)
+flagmean_macaw_phys$tcari.osavi <- TCARI.OSAVI(flagmean_macaw_phys)
+flagmean_macaw_phys$tcari <- TCARI(flagmean_macaw_phys)
+flagmean_macaw_phys$pri550 <- PRI550(flagmean_macaw_phys)
+flagmean_macaw_phys$prinorm <- PRInorm(flagmean_macaw_phys)
+flagmean_macaw_phys$prinorm550 <- PRInorm550(flagmean_macaw_phys)
+flagmean_macaw_phys$rer <- RER(flagmean_macaw_phys)
+flagmean_macaw_phys$rdvi <- RDVI(flagmean_macaw_phys)
+
+```
+
+#Exploratory Plots
+##Boxplot & scatterplot
+###veg mask 
+```{r}
+flagmean_macaw_phys$Treatment2 <- factor(flagmean_macaw_phys$Treatment, levels = c("BAYER 16 (SOIL) WW", "CONTROL WW", "CONTROL DDD"), order = TRUE)
+
+#SWP change
+ggplot(flagmean_macaw_phys, aes(x = as.factor(Date), y = -SWP, fill = Treatment2)) + geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Stem Water Potential (Bars)") + scale_fill_tableau() + ggtitle("Stem Water Potential Seasonal Change")
+
+#PRI change
+ggplot(flagmean_macaw_phys, aes(x = as.factor(Date), y = pri, fill = Treatment2)) + geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI") + scale_fill_tableau() + ggtitle("PRI")
+
+#NDVI 
+ggplot(flagmean_macaw_phys, aes(x = as.factor(Date), y = NDVI, fill = Treatment2)) + geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NDVI") + scale_fill_tableau() + ggtitle("NDVI")
+
+#TCARI.OSAVI
+ggplot(flagmean_macaw_phys, aes(x = as.factor(Date), y = tcari.osavi, fill = Treatment2)) + geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("TCARI/OSAVI") + scale_fill_tableau() + ggtitle("TCARI/OSAVI")
+
+#WI
+ggplot(flagmean_macaw_phys, aes(x = as.factor(Date), y = wi, fill = Treatment2)) + geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("WI") + scale_fill_tableau() + ggtitle("WI")
+
+
+##SWP change
+ggplot(flagmean_macaw_phys, aes(x = Date, y = -SWP, color = Treatment)) + geom_point()
+flagmean_macaw_phys
+lm1 <- lm(flagmean_macaw_phys$SWP ~ flagmean_macaw_phys$pri + flagmean_macaw_phys$Treatment)
+anova(lm1)
+
+##Cond
+ggplot(flagmean_macaw_phys, aes(x = Date, y = Cond, color = Treatment)) + geom_point()
+
+##Chl
+ggplot(flagmean_macaw_phys, aes(x = Date, y = CHL, color = Treatment)) + geom_point()
+
+##PRI change
+ggplot(flagmean_macaw_phys, aes(x = Date, y = pri, color = Treatment)) + geom_point() + ylab("PRI")
+
+##NDVI change
+ggplot(flagmean_macaw_phys, aes(x = Date, y = ndvi, color = Treatment)) + geom_point() + ylab("NDVI")
+
+##TCARI.OSAVI
+ggplot(flagmean_macaw_phys, aes(x = Date, y = tcari.osavi, color = Treatment)) + geom_point() + ylab("TCARI/OSAVI")
+
+##wi
+ggplot(flagmean_macaw_phys, aes(x = Date, y = wi, color = Treatment)) + geom_point() + ylab("WI")
+
+##wi.ndvi
+ggplot(flagmean_macaw_phys, aes(x = Date, y = wi.ndvi, color = Treatment)) + geom_point() + ylab("WI/NDVI")
+
+##mcari
+ggplot(flagmean_macaw_phys, aes(x = Date, y = mcari, color = Treatment)) + geom_point() + ylab("MCARI")
+
+#TCARI.OSAVI vs CHL
+ggplot(flagmean_macaw_phys, aes(x = CHL, y = tcari.osavi/ndvi, color = as.factor(Date))) + geom_point() + xlab("PRI") + ylab("TCARI/OSAVI") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys, aes(x = tcari.osavi, y = CHL)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI") + ylab("SWP") + geom_smooth(method = "lm")
+
+
+##PRI vs SWP
+ggplot(flagmean_macaw_phys, aes(x = pri, y = -SWP)) + geom_point() + xlab("PRI from MACAW") + ylab("SWP") + geom_smooth(method = "lm")+ facet_wrap(~Date, scale = "free", nrow = 2)+ theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "none")+theme(legend.title = element_blank())
+
+
+ggplot(flagmean_macaw_phys, aes(x = pri, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI") + ylab("SWP (Bars)") + geom_smooth(method = "lm", se = FALSE, color = "red") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())
+cor(flagmean_macaw_phys$pri, flagmean_macaw_phys$SWP)^2  #0.376
+lm1 <- lm(pri~SWP, data = flagmean_macaw_phys)
+summary(lm1)
+ggplot(flagmean_macaw_phys, aes(x = pri, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("Photochemical Reflectance Index (PRI)") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_bw()+theme(text = element_text(size = 15))
+
+
+##PRI/NDVI vs SWP
+ggplot(flagmean_macaw_phys, aes(x = pri/ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys, aes(x = pri/ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys$pri/flagmean_macaw_phys$ndvi, flagmean_macaw_phys$SWP)^2  #0.387
+#The difference is due to the 
+
+##PRI550
+ggplot(flagmean_macaw_phys, aes(x = pri550, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI550") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys, aes(x = pri550, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI550") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys$pri550, flagmean_macaw_phys$SWP)^2  #0.0149
+
+##PRInorm
+###SWP
+ggplot(flagmean_macaw_phys, aes(x = prinorm, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRInorm") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys, aes(x = prinorm, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRInorm") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys$prinorm, flagmean_macaw_phys$SWP)^2  #0.2703
+###Cond
+ggplot(flagmean_macaw_phys, aes(x = prinorm, y = Cond, color = as.factor(Date))) + geom_point() + xlab("PRInorm") + ylab("Cond") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys, aes(x = prinorm, y = Cond)) + geom_point(aes(color = as.factor(Date))) + xlab("PRInorm") + ylab("Cond") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys$prinorm, flagmean_macaw_phys$Cond)^2  #0.004
+
+
+##PRI550norm
+ggplot(flagmean_macaw_phys, aes(x = prinorm550, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRInorm550") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys, aes(x = prinorm550, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRInorm550") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys$prinorm550, flagmean_macaw_phys$SWP)^2  #0.0788
+
+##WI
+ggplot(flagmean_macaw_phys, aes(x = wi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("WI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys, aes(x = wi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("Water Index (WI)") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_bw()+theme(text = element_text(size = 15))
+cor(flagmean_macaw_phys$wi, flagmean_macaw_phys$SWP)^2  #0.4004
+ggplot(flagmean_macaw_phys, aes(x = wi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("WI") + ylab("SWP (Bars)") + geom_smooth(method = "lm", se = FALSE, color = "red") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())
+
+
+##WI/NDVI
+ggplot(flagmean_macaw_phys, aes(x = wi.ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("WI/NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys, aes(x = wi.ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("WI/NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys$wi.ndvi, flagmean_macaw_phys$SWP)^2  #0.2169
+
+#Chlorophyll Index
+##RER
+ggplot(flagmean_macaw_phys, aes(x = rer, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("RER") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys, aes(x = rer, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("RER") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys$rer, flagmean_macaw_phys$SWP)^2  #0.024
+##TCARI
+ggplot(flagmean_macaw_phys, aes(x = tcari, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("TCARI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys, aes(x = tcari, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("TCARI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys$tcari, flagmean_macaw_phys$SWP)^2  #0.387
+##TCARI.OSAVI
+ggplot(flagmean_macaw_phys, aes(x = tcari.osavi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("TCARI/OSAVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys, aes(x = tcari.osavi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("TCARI/OSAVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys$tcari.osavi, flagmean_macaw_phys$SWP)^2  #0.3349
+##MCARI
+ggplot(flagmean_macaw_phys, aes(x = mcari, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("MCARI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys, aes(x = mcari, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("MCARI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys$mcari, flagmean_macaw_phys$SWP)^2  #0.292
+
+#Strucutre Index
+##NDVI
+ggplot(flagmean_macaw_phys, aes(x = ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys, aes(x = ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys$ndvi, flagmean_macaw_phys$SWP)^2  #0.1849
+##RDVI
+ggplot(flagmean_macaw_phys, aes(x = rdvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("RDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys, aes(x = rdvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("RDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys$rdvi, flagmean_macaw_phys$SWP)^2  #0.324684
+
+
+
+
+
+##PRI/(RDVI*TCARI)
+ggplot(flagmean_macaw_phys, aes(x = pri/(rdvi*tcari), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(RDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm") + xlim(-1.5,0)
+ggplot(flagmean_macaw_phys, aes(x = pri/(rdvi*tcari), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(RDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm")+xlim(-1.5, 0)
+cor(flagmean_macaw_phys$pri/(flagmean_macaw_phys$rdvi*flagmean_macaw_phys$tcari), flagmean_macaw_phys$SWP)^2  #0.068
+
+
+
+##PRI/(NDVI*TCARI)
+ggplot(flagmean_macaw_phys, aes(x = pri/(ndvi*tcari.osavi), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(NDVI*TCARI/OSAVI)") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys, aes(x = pri/(ndvi*tcari.osavi), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(NDVI*TCARI/OSAVI)") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys$pri/(flagmean_macaw_phys$ndvi*flagmean_macaw_phys$tcari.osavi), flagmean_macaw_phys$SWP)^2  #0.068
+
+##PRI/(NDVI*TCARI)
+ggplot(flagmean_macaw_phys, aes(x = pri/(ndvi*tcari), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(NDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys, aes(x = pri/(ndvi*tcari), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(NDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys$pri/(flagmean_macaw_phys$ndvi*flagmean_macaw_phys$tcari), flagmean_macaw_phys$SWP)^2  #0.068
+
+
+```
+###fruit mask
+```{r}
+flagmean_macaw_exgexrmask_phys$Treatment2 <- factor(flagmean_macaw_exgexrmask_phys$Treatment, levels = c("BAYER 16 (SOIL) WW", "CONTROL WW", "CONTROL DDD"), order = TRUE)
+
+#SWP change
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = as.factor(Date), y = -SWP, fill = Treatment2)) + geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Stem Water Potential (Bars)") + scale_fill_tableau() + ggtitle("Stem Water Potential Seasonal Change")
+#stomatal conductance
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = as.factor(Date), y = Cond, fill = Treatment2)) + geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Stomatal Conductance") + scale_fill_tableau() + ggtitle("Stomatal Conductance")
+
+
+#PRI change
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = as.factor(Date), y = pri, fill = Treatment2)) + geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI") + scale_fill_tableau() + ggtitle("PRI")
+
+#NDVI 
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = as.factor(Date), y = NDVI, fill = Treatment2)) + geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NDVI") + scale_fill_tableau() + ggtitle("NDVI")
+
+#TCARI.OSAVI
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = as.factor(Date), y = tcari.osavi, fill = Treatment2)) + geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("TCARI/OSAVI") + scale_fill_tableau() + ggtitle("TCARI/OSAVI")
+
+#WI
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = as.factor(Date), y = wi, fill = Treatment2)) + geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("WI") + scale_fill_tableau() + ggtitle("WI")
+
+
+##SWP change
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = Date, y = -SWP, color = Treatment)) + geom_point()
+flagmean_macaw_exgexrmask_phys
+lm1 <- lm(flagmean_macaw_exgexrmask_phys$SWP ~ flagmean_macaw_exgexrmask_phys$pri + flagmean_macaw_exgexrmask_phys$Treatment)
+anova(lm1)
+
+##Cond
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = Date, y = Cond, color = Treatment)) + geom_point()
+
+##Chl
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = Date, y = CHL, color = Treatment)) + geom_point()
+
+##PRI change
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = Date, y = pri, color = Treatment)) + geom_point() + ylab("PRI")
+
+##NDVI change
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = Date, y = ndvi, color = Treatment)) + geom_point() + ylab("NDVI")
+
+##TCARI.OSAVI
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = Date, y = tcari.osavi, color = Treatment)) + geom_point() + ylab("TCARI/OSAVI")
+
+##wi
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = Date, y = wi, color = Treatment)) + geom_point() + ylab("WI")
+
+##wi.ndvi
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = Date, y = wi.ndvi, color = Treatment)) + geom_point() + ylab("WI/NDVI")
+
+##mcari
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = Date, y = mcari, color = Treatment)) + geom_point() + ylab("MCARI")
+
+#TCARI.OSAVI vs CHL
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = CHL, y = tcari.osavi/ndvi, color = as.factor(Date))) + geom_point() + xlab("PRI") + ylab("TCARI/OSAVI") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = tcari.osavi, y = CHL)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI") + ylab("SWP") + geom_smooth(method = "lm")
+
+
+##PRI vs SWP
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = pri, y = -SWP)) + geom_point() + xlab("PRI from MACAW") + ylab("SWP") + geom_smooth(method = "lm")+ facet_wrap(~Date, scale = "free", nrow = 2)+ theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "none")+theme(legend.title = element_blank())
+
+
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = pri, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI") + ylab("SWP (Bars)") + geom_smooth(method = "lm", se = FALSE, color = "red") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())
+cor(flagmean_macaw_exgexrmask_phys$pri, flagmean_macaw_exgexrmask_phys$SWP)^2  #0.376
+lm1 <- lm(pri~SWP, data = flagmean_macaw_exgexrmask_phys)
+summary(lm1)
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = pri, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("Photochemical Reflectance Index (PRI)") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_bw()+theme(text = element_text(size = 15))
+
+
+##PRI/NDVI vs SWP
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = pri/ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = pri/ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_exgexrmask_phys$pri/flagmean_macaw_exgexrmask_phys$ndvi, flagmean_macaw_exgexrmask_phys$SWP)^2  #0.387
+#The difference is due to the 
+
+##PRI550
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = pri550, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI550") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = pri550, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI550") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_exgexrmask_phys$pri550, flagmean_macaw_exgexrmask_phys$SWP)^2  #0.0149
+
+##PRInorm
+###SWP
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = prinorm, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRInorm") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = prinorm, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRInorm") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_exgexrmask_phys$prinorm, flagmean_macaw_exgexrmask_phys$SWP)^2  #0.2703
+###Cond
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = prinorm, y = Cond, color = as.factor(Date))) + geom_point() + xlab("PRInorm") + ylab("Cond") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = prinorm, y = Cond)) + geom_point(aes(color = as.factor(Date))) + xlab("PRInorm") + ylab("Cond") + geom_smooth(method = "lm")
+cor(flagmean_macaw_exgexrmask_phys$prinorm, flagmean_macaw_exgexrmask_phys$Cond)^2  #0.004
+
+
+##PRI550norm
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = prinorm550, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRInorm550") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = prinorm550, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRInorm550") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_exgexrmask_phys$prinorm550, flagmean_macaw_exgexrmask_phys$SWP)^2  #0.0788
+
+##WI
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = wi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("WI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = wi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("Water Index (WI)") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_bw()+theme(text = element_text(size = 15))
+cor(flagmean_macaw_exgexrmask_phys$wi, flagmean_macaw_exgexrmask_phys$SWP)^2  #0.4004
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = wi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("WI") + ylab("SWP (Bars)") + geom_smooth(method = "lm", se = FALSE, color = "red") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())
+
+
+##WI/NDVI
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = wi.ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("WI/NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = wi.ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("WI/NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_exgexrmask_phys$wi.ndvi, flagmean_macaw_exgexrmask_phys$SWP)^2  #0.2169
+
+#Chlorophyll Index
+##RER
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = rer, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("RER") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = rer, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("RER") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_exgexrmask_phys$rer, flagmean_macaw_exgexrmask_phys$SWP)^2  #0.024
+##TCARI
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = tcari, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("TCARI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = tcari, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("TCARI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_exgexrmask_phys$tcari, flagmean_macaw_exgexrmask_phys$SWP)^2  #0.387
+##TCARI.OSAVI
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = tcari.osavi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("TCARI/OSAVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = tcari.osavi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("TCARI/OSAVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_exgexrmask_phys$tcari.osavi, flagmean_macaw_exgexrmask_phys$SWP)^2  #0.3349
+##MCARI
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = mcari, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("MCARI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = mcari, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("MCARI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_exgexrmask_phys$mcari, flagmean_macaw_exgexrmask_phys$SWP)^2  #0.292
+
+#Strucutre Index
+##NDVI
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_exgexrmask_phys$ndvi, flagmean_macaw_exgexrmask_phys$SWP)^2  #0.1849
+##RDVI
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = rdvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("RDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = rdvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("RDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_exgexrmask_phys$rdvi, flagmean_macaw_exgexrmask_phys$SWP)^2  #0.324684
+
+
+
+
+
+##PRI/(RDVI*TCARI)
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = pri/(rdvi*tcari), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(RDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm") + xlim(-1.5,0)
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = pri/(rdvi*tcari), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(RDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm")+xlim(-1.5, 0)
+cor(flagmean_macaw_exgexrmask_phys$pri/(flagmean_macaw_exgexrmask_phys$rdvi*flagmean_macaw_exgexrmask_phys$tcari), flagmean_macaw_exgexrmask_phys$SWP)^2  #0.068
+
+
+
+##PRI/(NDVI*TCARI)
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = pri/(ndvi*tcari.osavi), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(NDVI*TCARI/OSAVI)") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = pri/(ndvi*tcari.osavi), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(NDVI*TCARI/OSAVI)") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_exgexrmask_phys$pri/(flagmean_macaw_exgexrmask_phys$ndvi*flagmean_macaw_exgexrmask_phys$tcari.osavi), flagmean_macaw_exgexrmask_phys$SWP)^2  #0.068
+
+##PRI/(NDVI*TCARI)
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = pri/(ndvi*tcari), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(NDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_exgexrmask_phys, aes(x = pri/(ndvi*tcari), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(NDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_exgexrmask_phys$pri/(flagmean_macaw_exgexrmask_phys$ndvi*flagmean_macaw_exgexrmask_phys$tcari), flagmean_macaw_exgexrmask_phys$SWP)^2  #0.068
+
+
+```
+
+##Spectral reflectance of different treatment 
+###veg mask 
+```{r}
+unique(flagmean_macaw$Date)
+flagmean_macaw_062819 <- subset(flagmean_macaw, Date=="2019-06-28")
+flagmean_macaw_080219 <- subset(flagmean_macaw, Date=="2019-08-02")
+flagmean_macaw_081519 <- subset(flagmean_macaw, Date=="2019-08-15")
+flagmean_macaw_082219 <- subset(flagmean_macaw, Date=="2019-08-22")
+names(flagmean_macaw)
+wavelen_macaw <- c(450, 480, 530, 550, 570, 670, 700, 720, 740, 800, 900, 970)
+
+ref_flagmean <- gather(flagmean_macaw, wavelen, reflectance, X800:X970, factor_key = FALSE)
+#change wavelen to numeric
+ref_flagmean$wavelen <- as.numeric(substring(ref_flagmean$wavelen,2))
+unique(ref_flagmean$wavelen)
+
+#subset by date
+ref_flagmean_062819 <- subset(ref_flagmean, Date=="2019-06-28")
+ref_flagmean_080219 <- subset(ref_flagmean, Date=="2019-08-02")
+ref_flagmean_081519 <- subset(ref_flagmean, Date=="2019-08-15")
+ref_flagmean_082219 <- subset(ref_flagmean, Date=="2019-08-22")
+
+#calculate mean and variance
+ref_flagmean_062819_sum <- ref_flagmean_062819 %>% group_by(Treatment, wavelen) %>% summarise(Mean = mean(reflectance), Var = var(reflectance))
+ref_flagmean_080219_sum <- ref_flagmean_080219 %>% group_by(Treatment, wavelen) %>% summarise(Mean = mean(reflectance), Var = var(reflectance))
+ref_flagmean_081519_sum <- ref_flagmean_081519 %>% group_by(Treatment, wavelen) %>% summarise(Mean = mean(reflectance), Var = var(reflectance))
+ref_flagmean_082219_sum <- ref_flagmean_082219 %>% group_by(Treatment, wavelen) %>% summarise(Mean = mean(reflectance), Var = var(reflectance))
+
+
+
+#Plot
+ggplot(ref_flagmean_062819_sum, aes(x = wavelen, y = Mean, color = Treatment)) + geom_line(size = 1) + xlab("Wavelength(nm)")+ylab("Average Reflectance") + ggtitle("2019-06-28") + theme_pubr(border  =TRUE, base_family = "serif", base_size = 14, legend = "right") + ylim(0,0.6) #+ geom_errorbar(aes(x = wavelen, ymin =  Mean - Var, ymax = Mean + Var, color = Treatment))
+ggplot(ref_flagmean_080219_sum, aes(x = wavelen, y = Mean, color = Treatment)) + geom_line(size = 1) + xlab("Wavelength(nm)")+ylab("Average Reflectance") + ggtitle("2019-08-02")+ theme_pubr(border  =TRUE, base_family = "serif", base_size = 14, legend = "right") + ylim(0,0.6)#+ geom_errorbar(aes(x = wavelen, ymin =  Mean - Var, ymax = Mean + Var, color = Treatment))
+ggplot(ref_flagmean_081519_sum, aes(x = wavelen, y = Mean, color = Treatment)) + geom_line(size = 1) + xlab("Wavelength(nm)")+ylab("Average Reflectance") + ggtitle("2019-08-15")+ theme_pubr(border  =TRUE, base_family = "serif", base_size = 14, legend = "right") + ylim(0,0.6) #+ geom_errorbar(aes(x = wavelen, ymin =  Mean - Var, ymax = Mean + Var, color = Treatment))
+ggplot(ref_flagmean_081519_sum, aes(x = wavelen, y = Mean, color = Treatment)) + geom_line(size = 1) + xlab("Wavelength(nm)")+ylab("Average Reflectance") + ggtitle("2019-08-15") + xlim(450, 800)+ theme_pubr(border  =TRUE, base_family = "serif", base_size = 14, legend = "right") #+ geom_errorbar(aes(x = wavelen, ymin =  Mean - Var, ymax = Mean + Var, color = Treatment))
+
+#ggplot(ref_flagmean_082219_sum, aes(x = wavelen, y = Mean, color = Treatment)) + geom_line(size = 1) + xlab("Wavelength(nm)")+ylab("Average Reflectance") + ggtitle("2019-08-22") #+ geom_errorbar(aes(x = wavelen, ymin =  Mean - Var, ymax = Mean + Var, color = Treatment))
+
+#ggplot(ref_flagmean_062819, aes(x = wavelen, y = reflectance, color = Treatment)) + geom_line(alpha = 0.2, size = 0.2)+ ylab("Average Reflectance")+xlab("Wavelength")#+ geom_line(data = ref_flagmean_062819_sum, aes(x = wavelen, y = Mean, color = Treatment))
+#ggplot(ref_flagmean_062819_sum, aes(x = wavelen, y = Mean, color = Treatment)) + geom_line()+ylab("Average Reflectance")+xlab("Wavelength(nm)") 
+
+
+
+ggplot(subset(ref_flagmean, Date=="2019-08-02"), aes(x = wavelen, y = reflectance, color = Treatment)) + geom_point() 
+head(ref_flagmean)
+ref_flagmean_080219 <- data.frame(wavelen = wavelen_macaw, ref = flagmean_macaw_081519[,c])
+plot(x = wavelen_macaw, y =  flagmean_macaw_081519[,c(5:15,4)], color = flagmean_macaw_081519$Treatment)
+
+```
+
+##Only 06-28 and 08-02
+```{r}
+flagmean_macaw_phys2 <- subset(flagmean_macaw_phys, Date!="2019-08-15")
+dim(flagmean_macaw_phys2) #240, 41
+
+##PRI vs SWP
+ggplot(flagmean_macaw_phys2, aes(x = pri, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys2, aes(x = pri, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI") + ylab("SWP (Bars)") + geom_smooth(method = "lm", se = FALSE, color = "red") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())
+cor(flagmean_macaw_phys2$pri, flagmean_macaw_phys2$SWP)^2  #0.117
+lm1 <- lm(pri~SWP, data = flagmean_macaw_phys2)
+summary(lm1)
+ggplot(flagmean_macaw_phys2, aes(x = pri, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("Photochemical Reflectance Index (PRI)") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_bw()+theme(text = element_text(size = 15))
+
+
+##PRI/NDVI vs SWP
+ggplot(flagmean_macaw_phys2, aes(x = pri/ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys2, aes(x = pri/ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys2$pri/flagmean_macaw_phys2$ndvi, flagmean_macaw_phys2$SWP)^2  #0.387
+#The difference is due to the 
+
+##PRI550
+ggplot(flagmean_macaw_phys2, aes(x = pri550, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI550") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys2, aes(x = pri550, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI550") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys2$pri550, flagmean_macaw_phys2$SWP)^2  #0.0149
+
+##PRInorm
+###SWP
+ggplot(flagmean_macaw_phys2, aes(x = prinorm, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRInorm") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys2, aes(x = prinorm, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRInorm") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys2$prinorm, flagmean_macaw_phys2$SWP)^2  #0.2703
+###Cond
+ggplot(flagmean_macaw_phys2, aes(x = prinorm, y = Cond, color = as.factor(Date))) + geom_point() + xlab("PRInorm") + ylab("Cond") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys2, aes(x = prinorm, y = Cond)) + geom_point(aes(color = as.factor(Date))) + xlab("PRInorm") + ylab("Cond") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys2$prinorm, flagmean_macaw_phys2$Cond)^2  #0.004
+
+
+##PRI550norm
+ggplot(flagmean_macaw_phys2, aes(x = prinorm550, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRInorm550") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys2, aes(x = prinorm550, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRInorm550") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys2$prinorm550, flagmean_macaw_phys2$SWP)^2  #0.0788
+
+##WI
+ggplot(flagmean_macaw_phys2, aes(x = wi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("WI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys2, aes(x = wi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("Water Index (WI)") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_bw()+theme(text = element_text(size = 15))
+cor(flagmean_macaw_phys2$wi, flagmean_macaw_phys2$SWP)^2  #0.4004
+ggplot(flagmean_macaw_phys2, aes(x = wi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("WI") + ylab("SWP (Bars)") + geom_smooth(method = "lm", se = FALSE, color = "red") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())
+
+
+##WI/NDVI
+ggplot(flagmean_macaw_phys2, aes(x = wi.ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("WI/NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys2, aes(x = wi.ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("WI/NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys2$wi.ndvi, flagmean_macaw_phys2$SWP)^2  #0.2169
+
+#Chlorophyll Index
+##RER
+ggplot(flagmean_macaw_phys2, aes(x = rer, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("RER") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys2, aes(x = rer, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("RER") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys2$rer, flagmean_macaw_phys2$SWP)^2  #0.024
+##TCARI
+ggplot(flagmean_macaw_phys2, aes(x = tcari, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("TCARI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys2, aes(x = tcari, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("TCARI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys2$tcari, flagmean_macaw_phys2$SWP)^2  #0.387
+##TCARI.OSAVI
+ggplot(flagmean_macaw_phys2, aes(x = tcari.osavi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("TCARI/OSAVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys2, aes(x = tcari.osavi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("TCARI/OSAVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys2$tcari.osavi, flagmean_macaw_phys2$SWP)^2  #0.3349
+##MCARI
+ggplot(flagmean_macaw_phys2, aes(x = mcari, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("MCARI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys2, aes(x = mcari, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("MCARI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys2$mcari, flagmean_macaw_phys2$SWP)^2  #0.292
+
+#Strucutre Index
+##NDVI
+ggplot(flagmean_macaw_phys2, aes(x = ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys2, aes(x = ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys2$ndvi, flagmean_macaw_phys2$SWP)^2  #0.1849
+##RDVI
+ggplot(flagmean_macaw_phys2, aes(x = rdvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("RDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys2, aes(x = rdvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("RDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys2$rdvi, flagmean_macaw_phys2$SWP)^2  #0.324684
+
+
+
+
+
+##PRI/(RDVI*TCARI)
+ggplot(flagmean_macaw_phys2, aes(x = pri/(rdvi*tcari), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(RDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm") + xlim(-1.5,0)
+ggplot(flagmean_macaw_phys2, aes(x = pri/(rdvi*tcari), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(RDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm")+xlim(-1.5, 0)
+cor(flagmean_macaw_phys2$pri/(flagmean_macaw_phys2$rdvi*flagmean_macaw_phys2$tcari), flagmean_macaw_phys2$SWP)^2  #0.068
+
+
+
+##PRI/(NDVI*TCARI)
+ggplot(flagmean_macaw_phys2, aes(x = pri/(ndvi*tcari.osavi), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(NDVI*TCARI/OSAVI)") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys2, aes(x = pri/(ndvi*tcari.osavi), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(NDVI*TCARI/OSAVI)") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys2$pri/(flagmean_macaw_phys2$ndvi*flagmean_macaw_phys2$tcari.osavi), flagmean_macaw_phys2$SWP)^2  #0.068
+
+##PRI/(NDVI*TCARI)
+ggplot(flagmean_macaw_phys2, aes(x = pri/(ndvi*tcari), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(NDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(flagmean_macaw_phys2, aes(x = pri/(ndvi*tcari), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(NDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm")
+cor(flagmean_macaw_phys2$pri/(flagmean_macaw_phys2$ndvi*flagmean_macaw_phys2$tcari), flagmean_macaw_phys2$SWP)^2  #0.068
+
+```
+#Aggregate by row
+##veg mask 
+```{r}
+rowflagmean_macaw_phys <- aggregate(flagmean_macaw_phys[,c(8:19,22:33,35:39)], by = list("Row"=flagmean_macaw_phys$Row, "Treatment"=flagmean_macaw_phys$Treatment, "Block"=flagmean_macaw_phys$Block, "Date"=flagmean_macaw_phys$Date), FUN = mean)
+rowflagmean_macaw_phys2 <- subset(rowflagmean_macaw_phys, Date!="2019-08-15")
+
+##PRI vs SWP
+ggplot(rowflagmean_macaw_phys, aes(x = pri, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_phys, aes(x = pri, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI") + ylab("SWP (Bars)") + geom_smooth(method = "lm", se = FALSE, color = "red") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())
+ggplot(rowflagmean_macaw_phys, aes(x = pri, y = -SWP)) + geom_point() + xlab("PRI from MACAW") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())+facet_wrap(~Date, nrow = 2, scale = "free")
+
+##PRI vs Cond
+ggplot(rowflagmean_macaw_phys, aes(x = pri, y = Cond)) + geom_point() + xlab("PRI from MACAW") + ylab("Stomatal Conductance") + geom_smooth(method = "lm") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())+facet_wrap(~Date, nrow = 2, scale = "free")
+
+
+cor(rowflagmean_macaw_phys$pri, rowflagmean_macaw_phys$SWP)^2  #0.376
+lm1 <- lm(pri~SWP, data = rowflagmean_macaw_phys)
+summary(lm1)
+ggplot(rowflagmean_macaw_phys, aes(x = pri, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("Photochemical Reflectance Index (PRI)") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_bw()+theme(text = element_text(size = 15))
+
+
+##PRI/NDVI vs SWP
+ggplot(rowflagmean_macaw_phys, aes(x = pri/ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_phys, aes(x = pri/ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_phys$pri/rowflagmean_macaw_phys$ndvi, rowflagmean_macaw_phys$SWP)^2  #0.387
+#The difference is due to the 
+
+##PRI550
+ggplot(rowflagmean_macaw_phys, aes(x = pri550, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI550") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_phys, aes(x = pri550, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI550") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_phys$pri550, rowflagmean_macaw_phys$SWP)^2  #0.0149
+
+##PRInorm
+###SWP
+ggplot(rowflagmean_macaw_phys, aes(x = prinorm, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRInorm") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_phys, aes(x = prinorm, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRInorm") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_phys$prinorm, rowflagmean_macaw_phys$SWP)^2  #0.2703
+###Cond
+ggplot(rowflagmean_macaw_phys, aes(x = prinorm, y = Cond, color = as.factor(Date))) + geom_point() + xlab("PRInorm") + ylab("Cond") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_phys, aes(x = prinorm, y = Cond)) + geom_point(aes(color = as.factor(Date))) + xlab("PRInorm") + ylab("Cond") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_phys$prinorm, rowflagmean_macaw_phys$Cond)^2  #0.004
+
+
+##PRI550norm
+ggplot(rowflagmean_macaw_phys, aes(x = prinorm550, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRInorm550") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_phys, aes(x = prinorm550, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRInorm550") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_phys$prinorm550, rowflagmean_macaw_phys$SWP)^2  #0.0788
+
+##WI
+ggplot(rowflagmean_macaw_phys, aes(x = wi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("WI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_phys, aes(x = wi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("Water Index (WI)") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_bw()+theme(text = element_text(size = 15))
+cor(rowflagmean_macaw_phys$wi, rowflagmean_macaw_phys$SWP)^2  #0.4004
+ggplot(rowflagmean_macaw_phys, aes(x = wi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("WI") + ylab("SWP (Bars)") + geom_smooth(method = "lm", se = FALSE, color = "red") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())
+
+
+##WI/NDVI
+ggplot(rowflagmean_macaw_phys, aes(x = wi.ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("WI/NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_phys, aes(x = wi.ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("WI/NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_phys$wi.ndvi, rowflagmean_macaw_phys$SWP)^2  #0.2169
+
+#Chlorophyll Index
+##RER
+ggplot(rowflagmean_macaw_phys, aes(x = rer, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("RER") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_phys, aes(x = rer, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("RER") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_phys$rer, rowflagmean_macaw_phys$SWP)^2  #0.024
+##TCARI
+ggplot(rowflagmean_macaw_phys, aes(x = tcari, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("TCARI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_phys, aes(x = tcari, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("TCARI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_phys$tcari, rowflagmean_macaw_phys$SWP)^2  #0.387
+##TCARI.OSAVI
+ggplot(rowflagmean_macaw_phys, aes(x = tcari.osavi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("TCARI/OSAVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_phys, aes(x = tcari.osavi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("TCARI/OSAVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_phys$tcari.osavi, rowflagmean_macaw_phys$SWP)^2  #0.3349
+##MCARI
+ggplot(rowflagmean_macaw_phys, aes(x = mcari, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("MCARI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_phys, aes(x = mcari, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("MCARI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_phys$mcari, rowflagmean_macaw_phys$SWP)^2  #0.292
+
+#Strucutre Index
+##NDVI
+ggplot(rowflagmean_macaw_phys, aes(x = ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_phys, aes(x = ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_phys$ndvi, rowflagmean_macaw_phys$SWP)^2  #0.1849
+##RDVI
+ggplot(rowflagmean_macaw_phys, aes(x = rdvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("RDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_phys, aes(x = rdvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("RDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_phys$rdvi, rowflagmean_macaw_phys$SWP)^2  #0.324684
+
+
+
+
+
+##PRI/(RDVI*TCARI)
+ggplot(rowflagmean_macaw_phys, aes(x = pri/(rdvi*tcari), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(RDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm") + xlim(-1.5,0)
+ggplot(rowflagmean_macaw_phys, aes(x = pri/(rdvi*tcari), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(RDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm")+xlim(-1.5, 0)
+cor(rowflagmean_macaw_phys$pri/(rowflagmean_macaw_phys$rdvi*rowflagmean_macaw_phys$tcari), rowflagmean_macaw_phys$SWP)^2  #0.068
+
+
+
+##PRI/(NDVI*TCARI)
+ggplot(rowflagmean_macaw_phys, aes(x = pri/(ndvi*tcari.osavi), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(NDVI*TCARI/OSAVI)") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_phys, aes(x = pri/(ndvi*tcari.osavi), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(NDVI*TCARI/OSAVI)") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_phys$pri/(rowflagmean_macaw_phys$ndvi*rowflagmean_macaw_phys$tcari.osavi), rowflagmean_macaw_phys$SWP)^2  #0.068
+
+##PRI/(NDVI*TCARI)
+ggplot(rowflagmean_macaw_phys, aes(x = pri/(ndvi*tcari), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(NDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_phys, aes(x = pri/(ndvi*tcari), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(NDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_phys$pri/(rowflagmean_macaw_phys$ndvi*rowflagmean_macaw_phys$tcari), rowflagmean_macaw_phys$SWP)^2  #0.068
+
+```
+##fruit mask
+###merge rowmean with rowmean
+```{r}
+rowflagmean_macaw_exgexrmask <- aggregate(flagmean_macaw_exgexrmask[,c(4:15,21:32)], by = list("Row"=flagmean_macaw_exgexrmask$Row, "Treatment"=flagmean_macaw_exgexrmask$Treatment, "Block"=flagmean_macaw_exgexrmask$Block, "Date"=flagmean_macaw_exgexrmask$Date), FUN = mean)
+dim(rowflagmean_macaw_exgexrmask)  #45,28
+dim(rowflagmean_macaw_swp)  #140,5
+
+for(i in 1:dim(rowflagmean_macaw_swp)[1]){
+  if(rowflagmean_macaw_swp[i,]$Date=="2019-06-26"){
+    rowflagmean_macaw_swp[i,]$Date= "2019-06-28"
+  }
+  if(rowflagmean_macaw_swp[i,]$Date=="2019-08-01"){
+    rowflagmean_macaw_swp[i,]$Date="2019-08-02"
+  }
+  if(rowflagmean_macaw_swp[i,]$Date=="2019-08-14"){
+    rowflagmean_macaw_swp[i,]$Date="2019-08-15"
+  }
+}
+
+#rowflagmean_macaw_swp$Block <- as.character(rowflagmean_macaw_swp$Block)
+rowflagmean_macaw_exgexrmask_swp <- base::merge(rowflagmean_macaw_exgexrmask, rowflagmean_macaw_swp, by = c("Block","Treatment","Date"))
+head(rowflagmean_macaw_exgexrmask_swp)
+dim(rowflagmean_macaw_exgexrmask_swp)  #45, 30
+dim(subset(rowflagmean_macaw_exgexrmask_swp, Date=="2019-06-28"))  #15,40
+dim(subset(rowflagmean_macaw_exgexrmask_swp, Date=="2019-08-02")) #15,40
+dim(subset(rowflagmean_macaw_exgexrmask_swp, Date=="2019-08-15")) #15, 40
+
+
+##Change class
+rowflagmean_macaw_exgexrmask_swp$Block <- as.factor(rowflagmean_macaw_exgexrmask_swp$Block)
+rowflagmean_macaw_exgexrmask_swp$Plot <- as.factor(rowflagmean_macaw_exgexrmask_swp$Plot)
+
+```
+####plots
+```{r}
+a1 = subset(rowflagmean_macaw_exgexrmask_swp, Date=="2019-06-28")
+a2 = subset(rowflagmean_macaw_exgexrmask_swp, Date=="2019-08-02")
+a3 = subset(rowflagmean_macaw_exgexrmask_swp, Date=="2019-08-15")
+View(a2)
+##PRI vs SWP
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = pri, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = pri, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI") + ylab("SWP (Bars)") + geom_smooth(method = "lm", se = FALSE, color = "red") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = pri, y = -SWP)) + geom_point() + xlab("PRI from MACAW") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())+facet_wrap(~Date, nrow = 2, scale = "free")
+
+
+
+cor(rowflagmean_macaw_exgexrmask_swp$pri, rowflagmean_macaw_exgexrmask_swp$SWP)^2  #0.5479
+lm1 <- lm(pri~SWP, data = rowflagmean_macaw_exgexrmask_swp)
+summary(lm1)
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = pri, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("Photochemical Reflectance Index (PRI)") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_bw()+theme(text = element_text(size = 15))
+
+
+##PRI/NDVI vs SWP
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = pri/ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = pri/ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_swp$pri/rowflagmean_macaw_exgexrmask_swp$ndvi, rowflagmean_macaw_exgexrmask_swp$SWP)^2  #0.537
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = pri/ndvi, y = -SWP)) + geom_point() + xlab("PRI/NDVI from MACAW") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())+facet_wrap(~Date, nrow = 2, scale = "free")
+
+
+
+
+##PRI550
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = pri550, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI550") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = pri550, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI550") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_swp$pri550, rowflagmean_macaw_exgexrmask_swp$SWP)^2  #0.0004
+
+##PRInorm
+###SWP
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = prinorm, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRInorm") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = prinorm, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRInorm") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_swp$prinorm, rowflagmean_macaw_exgexrmask_swp$SWP)^2  #0.402
+
+
+##PRI550norm
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = prinorm550, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRInorm550") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = prinorm550, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRInorm550") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_swp$prinorm550, rowflagmean_macaw_exgexrmask_swp$SWP)^2  #0.253
+
+##WI
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = wi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("WI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = wi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("Water Index (WI)") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_bw()+theme(text = element_text(size = 15))
+cor(rowflagmean_macaw_exgexrmask_swp$wi, rowflagmean_macaw_exgexrmask_swp$SWP)^2  #0.541
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = wi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("WI") + ylab("SWP (Bars)") + geom_smooth(method = "lm", se = FALSE, color = "red") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())
+#ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = pri/ndvi, y = -SWP)) + geom_point() + xlab("PRI/NDVI from MACAW") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())+facet_wrap(~Date, nrow = 2, scale = "free")
+
+
+##WI/NDVI
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = wi.ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("WI/NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = wi.ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("WI/NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_swp$wi.ndvi, rowflagmean_macaw_exgexrmask_swp$SWP)^2  #0.3886
+
+#Chlorophyll Index
+##RER
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = rer, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("RER") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = rer, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("RER") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_swp$rer, rowflagmean_macaw_exgexrmask_swp$SWP)^2  #0.00345
+##TCARI
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = tcari, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("TCARI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = tcari, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("TCARI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_swp$tcari, rowflagmean_macaw_exgexrmask_swp$SWP)^2  #0.594
+##TCARI.OSAVI
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = tcari.osavi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("TCARI/OSAVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = tcari.osavi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("TCARI/OSAVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_swp$tcari.osavi, rowflagmean_macaw_exgexrmask_swp$SWP)^2  #0.0102
+##MCARI
+
+#Strucutre Index
+##NDVI
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_swp$ndvi, rowflagmean_macaw_exgexrmask_swp$SWP)^2  #0.2751
+##RDVI
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = rdvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("RDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = rdvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("RDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_swp$rdvi, rowflagmean_macaw_exgexrmask_swp$SWP)^2  #0.5557
+
+
+
+
+
+##PRI/(RDVI*TCARI)
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = pri/(rdvi*tcari), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(RDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm")# + xlim(-1.5,0)
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = pri/(rdvi*tcari), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(RDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm")#+xlim(-1.5, 0)
+cor(rowflagmean_macaw_exgexrmask_swp$pri/(rowflagmean_macaw_exgexrmask_swp$rdvi*rowflagmean_macaw_exgexrmask_swp$tcari), rowflagmean_macaw_exgexrmask_swp$SWP)^2  #0.1052
+
+
+
+##PRI/(NDVI*TCARI)
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = pri/(ndvi*tcari.osavi), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(NDVI*TCARI/OSAVI)") + ylab("SWP") + geom_smooth(method = "lm")+facet_wrap(~Date)
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = pri/(ndvi*tcari.osavi), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(NDVI*TCARI/OSAVI)") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_swp$pri/(rowflagmean_macaw_exgexrmask_swp$ndvi*rowflagmean_macaw_exgexrmask_swp$tcari.osavi), rowflagmean_macaw_exgexrmask_swp$SWP)^2  #0.591
+cor(a1$pri/(a1$ndvi*a1$tcari.osavi), a1$SWP)^2  #0.142
+cor(a2$pri/(a2$ndvi*a2$tcari.osavi), a2$SWP)^2  #0.142
+cor(a3$pri/(a3$ndvi*a3$tcari.osavi), a3$SWP)^2  #0.142
+
+
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = pri/(ndvi*tcari.osavi), y = -SWP)) + geom_point(aes(color = Treatment)) + xlab("PRI/NDVI*TCARI from MACAW") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())+facet_wrap(~Date, nrow = 2, scale = "free")
+
+##PRI/(NDVI*TCARI)
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = pri/(ndvi*tcari), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(NDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_swp, aes(x = pri/(ndvi*tcari), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(NDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_swp$pri/(rowflagmean_macaw_exgexrmask_swp$ndvi*rowflagmean_macaw_exgexrmask_swp$tcari), rowflagmean_macaw_exgexrmask_swp$SWP)^2  #0.3456
+
+```
+
+##plots
+```{r}
+rowflagmean_macaw_exgexrmask_phys <- aggregate(flagmean_macaw_exgexrmask_phys[,c(8:19, 22:33, 37:40)], by = list("Row"=flagmean_macaw_exgexrmask_phys$Row, "Treatment"=flagmean_macaw_exgexrmask_phys$Treatment, "Block"=flagmean_macaw_exgexrmask_phys$Block, "Date"=flagmean_macaw_exgexrmask_phys$Date), FUN = mean)
+
+rowflagmean_macaw_exgexrmask_phys2 <- subset(rowflagmean_macaw_exgexrmask_phys, Date!="2019-08-15")
+
+##PRI vs SWP
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = pri, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = pri, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI") + ylab("SWP (Bars)") + geom_smooth(method = "lm", se = FALSE, color = "red") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = pri, y = -SWP)) + geom_point() + xlab("PRI from MACAW") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())+facet_wrap(~Date, nrow = 2, scale = "free")
+
+##PRI vs Cond
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = pri, y = Cond)) + geom_point() + xlab("PRI from MACAW") + ylab("Stomatal Conductance") + geom_smooth(method = "lm") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())+facet_wrap(~Date, nrow = 2, scale = "free")
+
+
+cor(rowflagmean_macaw_exgexrmask_phys$pri, rowflagmean_macaw_exgexrmask_phys$SWP)^2  #0.554
+lm1 <- lm(pri~SWP, data = rowflagmean_macaw_exgexrmask_phys)
+summary(lm1)
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = pri, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("Photochemical Reflectance Index (PRI)") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_bw()+theme(text = element_text(size = 15))
+
+
+##PRI/NDVI vs SWP
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = pri/ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = pri/ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_phys$pri/rowflagmean_macaw_exgexrmask_phys$ndvi, rowflagmean_macaw_exgexrmask_phys$SWP)^2  #0.543
+#The difference is due to the 
+
+##PRI550
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = pri550, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI550") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = pri550, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI550") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_phys$pri550, rowflagmean_macaw_exgexrmask_phys$SWP)^2  #0.00879
+
+##PRInorm
+###SWP
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = prinorm, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRInorm") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = prinorm, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRInorm") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_phys$prinorm, rowflagmean_macaw_exgexrmask_phys$SWP)^2  #0.405
+###Cond
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = prinorm, y = Cond, color = as.factor(Date))) + geom_point() + xlab("PRInorm") + ylab("Cond") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = prinorm, y = Cond)) + geom_point(aes(color = as.factor(Date))) + xlab("PRInorm") + ylab("Cond") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_phys$prinorm, rowflagmean_macaw_exgexrmask_phys$Cond)^2  #0.004
+
+
+##PRI550norm
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = prinorm550, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRInorm550") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = prinorm550, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRInorm550") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_phys$prinorm550, rowflagmean_macaw_exgexrmask_phys$SWP)^2  #0.0788
+
+##WI
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = wi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("WI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = wi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("Water Index (WI)") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_bw()+theme(text = element_text(size = 15))
+cor(rowflagmean_macaw_exgexrmask_phys$wi, rowflagmean_macaw_exgexrmask_phys$SWP)^2  #0.4004
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = wi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("WI") + ylab("SWP (Bars)") + geom_smooth(method = "lm", se = FALSE, color = "red") + theme_pubr(border = TRUE, base_size = 14, base_family = "serif", legend = "right")+theme(legend.title = element_blank())
+
+
+##WI/NDVI
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = wi.ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("WI/NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = wi.ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("WI/NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_phys$wi.ndvi, rowflagmean_macaw_exgexrmask_phys$SWP)^2  #0.2169
+
+#Chlorophyll Index
+##RER
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = rer, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("RER") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = rer, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("RER") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_phys$rer, rowflagmean_macaw_exgexrmask_phys$SWP)^2  #0.024
+##TCARI
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = tcari, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("TCARI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = tcari, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("TCARI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_phys$tcari, rowflagmean_macaw_exgexrmask_phys$SWP)^2  #0.387
+##TCARI.OSAVI
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = tcari.osavi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("TCARI/OSAVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = tcari.osavi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("TCARI/OSAVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_phys$tcari.osavi, rowflagmean_macaw_exgexrmask_phys$SWP)^2  #0.3349
+##MCARI
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = mcari, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("MCARI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = mcari, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("MCARI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_phys$mcari, rowflagmean_macaw_exgexrmask_phys$SWP)^2  #0.292
+
+#Strucutre Index
+##NDVI
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = ndvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("NDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("NDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_phys$ndvi, rowflagmean_macaw_exgexrmask_phys$SWP)^2  #0.1849
+##RDVI
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = rdvi, y = -SWP, color = as.factor(Date))) + geom_point() + xlab("RDVI") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = rdvi, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("RDVI") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_phys$rdvi, rowflagmean_macaw_exgexrmask_phys$SWP)^2  #0.324684
+
+
+
+
+
+##PRI/(RDVI*TCARI)
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = pri/(rdvi*tcari), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(RDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm") + xlim(-1.5,0)
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = pri/(rdvi*tcari), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(RDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm")+xlim(-1.5, 0)
+cor(rowflagmean_macaw_exgexrmask_phys$pri/(rowflagmean_macaw_exgexrmask_phys$rdvi*rowflagmean_macaw_exgexrmask_phys$tcari), rowflagmean_macaw_exgexrmask_phys$SWP)^2  #0.068
+
+
+
+##PRI/(NDVI*TCARI)
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = pri/(ndvi*tcari.osavi), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(NDVI*TCARI/OSAVI)") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = pri/(ndvi*tcari.osavi), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(NDVI*TCARI/OSAVI)") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_phys$pri/(rowflagmean_macaw_exgexrmask_phys$ndvi*rowflagmean_macaw_exgexrmask_phys$tcari.osavi), rowflagmean_macaw_exgexrmask_phys$SWP)^2  #0.068
+
+##PRI/(NDVI*TCARI)
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = pri/(ndvi*tcari), y = -SWP, color = as.factor(Date))) + geom_point() + xlab("PRI/(NDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm") 
+ggplot(rowflagmean_macaw_exgexrmask_phys, aes(x = pri/(ndvi*tcari), y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("PRI/(NDVI*TCARI)") + ylab("SWP") + geom_smooth(method = "lm")
+cor(rowflagmean_macaw_exgexrmask_phys$pri/(rowflagmean_macaw_exgexrmask_phys$ndvi*rowflagmean_macaw_exgexrmask_phys$tcari), rowflagmean_macaw_exgexrmask_phys$SWP)^2  #0.068
+
+```
+
+#Cross comparison
+```{r}
+dim(rowflagmean_macaw_phys)
+
+phys_weather_PRI <- read.csv(file.path(path_df, "phys_weather_PRI.csv"))
+phys_weather_PRI$Date <- as.Date(phys_weather_PRI$Date)
+unique(phys_weather_PRI$Date)
+for(i in 1:dim(phys_weather_PRI)[1]){
+  if(phys_weather_PRI[i,]$Date=="2019-06-25"){
+    phys_weather_PRI[i,]$Date = "2019-06-28"
+  }
+  if(phys_weather_PRI[i,]$Date=="2019-08-01"){
+    phys_weather_PRI[i,]$Date = "2019-08-02"
+  }
+  if(phys_weather_PRI[i,]$Date=="2019-08-14"){
+    phys_weather_PRI[i,]$Date = "2019-08-15"
+  }
+}
+names(phys_weather_PRI)[23:25] <- c("Block","Plot","Treatment")
+df_PRI_weather_nona <- read.csv(file.path(path_df, "df_PRI_weather_nona.csv"))
+names(df_PRI_weather_nona)[3:4] <- c("Block","Treatment")
+
+cross_comp <- merge(rowflagmean_macaw_phys, df_PRI_weather_nona, by = c("Date","Treatment","Block"))
+cross_comp2 <- merge(rowflagmean_macaw_phys, phys_weather_PRI, by = c("Date","Treatment","Block"))
+
+
+dim(cross_comp)
+names(cross_comp)
+unique(cross_comp$Date)
+
+#pri
+ggplot(cross_comp, aes(x = pri, y = PRIm.ma))+geom_point(size = 2,aes(color = as.factor(Date))) + theme_pubr(border = TRUE, legend = "right", base_size = 14, base_family = "serif") + theme(legend.title = element_blank()) + xlab("PRI from UAV") + ylab("PRI from Stand") + xlim(-0.08,0.025) + ylim(-0.08,0.025) + geom_abline(slope = 1, intercept = 0, color = "blue")+geom_smooth(method = "lm", se = FALSE, color = "red")
+cor(cross_comp$pri, cross_comp$PRIm.ma)^2
+#ndvi
+ggplot(cross_comp, aes(x = ndvi, y = NDVIm))+geom_point(size = 2,aes(color = as.factor(Date))) + theme_pubr(border = TRUE, legend = "right", base_size = 14, base_family = "serif") + theme(legend.title = element_blank()) + xlab("NDVI from UAV") + ylab("NDVI from Stand") + xlim(0.65,0.9) + ylim(0.65,0.9)+ geom_abline(slope = 1, intercept = 0, color = "blue")+geom_smooth(method = "lm", se = FALSE, color = "red")
+cor(cross_comp$ndvi, cross_comp$NDVIm)^2
+
+ggplot(cross_comp2, aes(x = pri, y = PRIm.ma))+geom_point(aes(color = as.factor(Date)))
+cor(cross_comp$pri, cross_comp$PRIm.ma)^2
+ggplot(cross_comp2, aes(x = ndvi, y = NDVIm))+geom_point(aes(color = as.factor(Date)))
+cor(cross_comp$ndvi, cross_comp$NDVIm)^2
+
+```
+
+#Machine learning 
+
+##Split into Training and Testing 
+###Split randomly
+```{r}
+set.seed(777)
+trainIndex <- caret::createDataPartition(flagmean_macaw_phys$SWP, p = 0.7, list = FALSE)
+train_PLr <- flagmean_macaw_phys[trainIndex, ]
+test_PLr <- flagmean_macaw_phys[-trainIndex,]
+
+#Use the reflectance only
+train_PLr_swp1 <- train_PLr[,c(8:19, 23)]
+test_PLr_swp1 <- test_PLr[,c(8:19,23)]
+names(train_PLr_swp1)
+names(test_PLr_swp1)
+
+#Use the index only 
+train_PLr_swp2 <- train_PLr[,c(29:31,33,34, 23)]
+test_PLr_swp2 <- test_PLr[,c(29:31,33,34,23)]
+names(train_PLr_swp2)
+names(test_PLr_swp2)
+
+#Use the optimal index 
+train_PLr_swp3 <- train_PLr[,c("pri","rdvi","wi","tcari","SWP")]
+test_PLr_swp3 <- test_PLr[,c("pri","rdvi","wi","tcari","SWP")]
+
+#Use the optimal index and reflectance only
+train_PLr_swp4 <- train_PLr[,c(8:19, 29:31,33,34, 23)]
+test_PLr_swp4 <- test_PLr[,c(8:19, 29:31,33,34, 23)]
+names(train_PLr_swp4)
+```
+####random forest regression
+#####reflectance only
+```{r}
+fitControl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+rf_swp1_r <- train(x = train_PLr_swp1[,1:12], y = train_PLr_swp1$SWP, trControl = fitControl, method = "rf", verbose = FALSE, importance = TRUE)
+rf_swp1_r
+#how accurate the model is 
+pred <- predict(rf_swp1_r, newdata = test_PLr_swp1)
+cor(pred, test_PLr_swp1$SWP)^2  #0.5469
+plot(x=pred, y=test_PLr_swp1$SWP,xlab = c("Predict SWP"), ylab = "Observed SWP", xlim=c(2,10),ylim=c(2,10))+lines(x = c(2,10), y = c(2,10), col = "red")
+rmse(pred, test_PLr_swp1$SWP)  #1.343
+mae(pred, test_PLr_swp1$SWP)  #1.013
+
+qplot(x=-pred, y=-test_PLr_swp1$SWP,xlab = c("Predicted SWP (Bars)"), ylab = "Observed SWP (Bars)", xlim=c(-2,-10),ylim=c(-2,-10)) + geom_abline(slope = 1, color = "red") + theme_bw()
+
+ggplot(varImp(rf_swp1_r))
+
+sample1 <- shapefile(file.path(path_shp, "sample1.shp"))
+macaw_062819_sample1 <- raster::crop(macaw_062819, sample1)
+plot(macaw_062819_sample1)
+for(i in 1:12){
+  macaw_062819_sample1[[i]] <- macaw_062819_sample1[[i]]/65535
+}
+map_rf_swp1_r_062819 <- predict(object = macaw_062819_sample1, model = rf_swp1_r)
+#mask out 
+veg_062819_sample1 <- reclassify(macaw_062819_sample1$NDVI, cbind(-Inf, 0.6,NA))
+map_rf_swp1_r_062819_masked <- raster::mask(map_rf_swp1_r_062819, veg_062819_sample1)
+plot(map_rf_swp1_r_062819_masked, col = brewer.pal(5,"RdYlBu"))
+path_output <- "D:/MACAW_tomato/Outputs"
+writeRaster(map_rf_swp1_r_062819_masked, file.path(path_output,"map_rf_swp1_r_062819_masked.tif"))
+
+#0802
+macaw_080219_sample1 <- raster::crop(macaw_080219, sample1)
+for(i in 1:12){
+  macaw_080219_sample1[[i]] <- macaw_080219_sample1[[i]]/65535
+}
+map_rf_swp1_r_080219 <- predict(object = macaw_080219_sample1, model = rf_swp1_r)
+#mask out 
+veg_080219_sample1 <- reclassify(macaw_080219_sample1$NDVI, cbind(-Inf, 0.6,NA))
+map_rf_swp1_r_080219_masked <- raster::mask(map_rf_swp1_r_080219, veg_080219_sample1)
+plot(map_rf_swp1_r_080219_masked)
+path_output <- "D:/MACAW_tomato/Outputs"
+writeRaster(map_rf_swp1_r_080219_masked, file.path(path_output,"map_rf_swp1_r_080219_masked.tif"))
+
+#--------------------------------------
+
+#rf_swp4_r
+rf_swp4_r <- train(x = train_PLr_swp4[,1:12], y = train_PLr_swp4$SWP, trControl = fitControl, method = "rf", verbose = FALSE, importance = TRUE)
+rf_swp4_r
+#how accurate the model is 
+pred <- predict(rf_swp4_r, newdata = test_PLr_swp4)
+cor(pred, test_PLr_swp4$SWP)^2  #0.5469
+plot(x=pred, y=test_PLr_swp4$SWP,xlab = c("Predict SWP"), ylab = "Observed SWP", xlim=c(2,10),ylim=c(2,10))+lines(x = c(2,10), y = c(2,10), col = "red")
+rmse(pred, test_PLr_swp4$SWP)  #1.343
+mae(pred, test_PLr_swp4$SWP)  #1.013
+
+qplot(x=-pred, y=-test_PLr_swp4$SWP,xlab = c("Predicted SWP (Bars)"), ylab = "Observed SWP (Bars)", xlim=c(-2,-10),ylim=c(-2,-10)) + geom_abline(slope = 1, color = "red") + theme_bw()
+
+ggplot(varImp(rf_swp4_r))
+
+
+```
+#####Optimal index only
+```{r}
+rf_swp3_r <- train(x = train_PLr_swp3[,1:4], y = train_PLr_swp3$SWP, trControl = fitControl, method = "rf", verbose = FALSE, importance = TRUE)
+rf_swp3_r
+
+pred <- predict(rf_swp3_r, newdata = test_PLr_swp3)
+cor(pred, test_PLr_swp3$SWP)^2  #0.474
+plot(x=pred, y=test_PLr_swp3$SWP,xlab = c("Predict SWP"), ylab = "Observed SWP", xlim=c(2,10),ylim=c(2,10))+lines(x = c(2,10), y = c(2,10), col = "red")
+rmse(pred, test_PLr_swp3$SWP)  #1.449
+mae(pred, test_PLr_swp3$SWP)  #1.10
+
+ggplot(varImp(rf_swp3_r))
+```
+####Decision Tree
+```{r}
+dtree_swp1_r <- train(x = train_PLr_swp1[,1:12], y = train_PLr_swp1$SWP, trControl = fitControl, method = "rpart", tuneLength = 10)
+rpart.plot(dtree_swp1_r$finalModel)
+
+
+pred <- predict(dtree_swp1_r, newdata = test_PLr_swp1)
+plot(x = pred, y = test_PLr_swp1$SWP)
+```
+####xgboost
+```{r}
+xgb_swp3_r <- train(x = train_PLr_swp3[,1:4], y = train_PLr_swp3$SWP, trControl = fitControl, method = "xgbTree", importance = TRUE)
+pred <- predict(xgb_swp3_r, newdata = test_PLr_swp3)
+rmse(pred, test_PLr_swp3$SWP)  #1.464
+cor(pred, test_PLr_swp3$SWP)^2  #0.464
+mae(pred, test_PLr_swp3$SWP)  #1.088
+plot(x=pred, y=test_PLr_swp3$SWP,xlab = c("Predict SWP"), ylab = "Observed SWP", xlim=c(2,10),ylim=c(2,10))+lines(x = c(2,10), y = c(2,10), col = "red")
+ggplot(varImp(xgb_swp3_r))
+
+rf_swp3_r <- train(x = train_PLr_swp3[,1:4], y = train_PLr_swp3$SWP, trControl = fitControl, method = "rf", verbose = FALSE, importance = TRUE)
+rf_swp3_r
+
+pred <- predict(rf_swp3_r, newdata = test_PLr_swp3)
+cor(pred, test_PLr_swp3$SWP)^2  #0.474
+plot(x=pred, y=test_PLr_swp3$SWP,xlab = c("Predict SWP"), ylab = "Observed SWP", xlim=c(2,10),ylim=c(2,10))+lines(x = c(2,10), y = c(2,10), col = "red")
+rmse(pred, test_PLr_swp3$SWP)  #1.449
+mae(pred, test_PLr_swp3$SWP)  #1.10
+
+ggplot(varImp(rf_swp3_r))
+
+```
+
+
+
+###Split by dates
+```{r}
+train_PL <- subset(flagmean_macaw_phys, Date!="2019-08-02")
+test_PL <- subset(flagmean_macaw_phys, Date=="2019-08-02")
+
+#Use the reflectance only
+train_PL_swp1 <- train_PL[,c(8:19, 23)]
+test_PL_swp1 <- test_PL[,c(8:19,23)]
+names(train_PL_swp1)
+names(test_PL_swp1)
+
+#Use the index only 
+train_PL_swp2 <- train_PL[,c(29:31,33,34, 23)]
+test_PL_swp2 <- test_PL[,c(29:31,33,34,23)]
+names(train_PL_swp2)
+names(test_PL_swp2)
+
+```
+
+##Random forest regression
+###Reflectance only
+```{r}
+fitControl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+rf_swp1 <- train(x = train_PL_swp1[,1:12], y = train_PL_swp1$SWP, trControl = fitControl, method = "rf", verbose = FALSE)
+
+#how accurate the 
+a <- predict(rf_swp1, newdata = test_PL_swp1)
+cor(a, test_PL_swp1$SWP)
+plot(a, test_PL_swp1$SWP)
+```
+###Index only
+```{r}
+rf_swp2 <- train(x = train_PL_swp2[,1:5], y = train_PL_swp2$SWP, trControl = fitControl, method = "rf", verbose = FALSE)
+
+#how accurate the 
+a <- predict(rf_swp2, newdata = test_PL_swp2)
+cor(a, test_PL_swp2$SWP)
+
+```
+
+
+```{r}
+path_df <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/dataframes"
+SWP_PL <- read.csv(file.path(path_df, "SWP_Plants.csv"))
+head(SWP_PL)
+CHL_PL <- read.csv(file.path(path_df, "Chl_Plants.csv"))
+tail(CHL_PL)
+IRT_PL <- read.csv(file.path(path_df, "IRT_Plants.csv"))
+tail(IRT_PL)
+
+unique(SWP_PL$PLOT)
+unique(CHL_PL$PLOT)
+unique(IRT_PL$PLOT)
+dim(SWP_PL)
+dim(SWP_PL)
+
+#Row and Block 
+
+```
+
+```{r}
+path_phys <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/Physiology"
+SWP_BA <- read_excel(file.path(path_phys, "SWP_2019_BlockAve.xlsx"))
+NPQ_BA <- read_excel(file.path(path_phys, "NPQ_2019_BlockAve.xlsx"))
+LICOR_BA <- read_excel(file.path(path_phys, "LICOR_2019_BlockAve.xlsx"))
+FAPAR_BA <- read_excel(file.path(path_phys, "FAPAR_2019_BlockAve.xlsx"))
+CHL_BA <- read_excel(file.path(path_phys, "CHL_2019_BlockAve.xlsx"))
+
+#merge them together
+phys_BA <- merge(SWP_BA, LICOR_BA, by = c("Date","BLOCK","PLOT","TREATMENT"))
+phys_BA <- merge(phys_BA, FAPAR_BA, by = c("Date","BLOCK","PLOT","TREATMENT"))
+phys_BA <- merge(phys_BA, CHL_BA, by = c("Date","BLOCK","PLOT","TREATMENT"))
+phys_BA <- merge(phys_BA, NPQ_BA, by = c("Date","BLOCK","PLOT","TREATMENT"))
+head(phys_BA)
+dim(phys_BA)
+str(phys_BA)
+
+#change format
+phys_BA$Date <- as.Date(phys_BA$Date)
+phys_BA$BLOCK <- as.factor(phys_BA$BLOCK)
+phys_BA$PLOT <- as.factor(phys_BA$PLOT)
+phys_BA$TREATMENT <- as.factor(phys_BA$TREATMENT)
+
+#add ID column
+phys_BA$ID <- paste(phys_BA$BLOCK, phys_BA$TREATMENT, sep = " ")
+
+#change date
+unique(phys_BA$Date)
+unique(flagmean_macaw$Date)
+
+#combine them together
+head(flagmean_macaw)
+head(phys_BA)
+flagmean_macaw_phys <- merge(phys_BA, flagmean_macaw, by = c("Date","Row"))
+```
+#Use the row average extracted from MACAW
+##Read row average
+```{r}
+path_df <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/dataframes"
+list.files(path_df)
+
+rowmean_macaw <- read.csv(file.path(path_df, "rowmean_macaw.csv"))
+rowmean_macaw_1ft <- read.csv(file.path(path_df, "rowmean_macaw_1ft.csv"))
+rowmean_macaw_2ft <- read.csv(file.path(path_df, "rowmean_macaw_2ft.csv"))
+rowmean_macaw_3ft <- read.csv(file.path(path_df, "rowmean_macaw_3ft.csv"))
+
+View(rowmean_macaw)
+names(rowmean_macaw)
+
+```
+##calculate indices
+```{r}
+
+```
+
+##Exploratory Plot
+```{r}
+ggplot(rowmean_macaw, aes(x = Date, y =  ))
+```
+
+##Combine with SWP
+```{r}
+rowmean_macaw_swp <- base::merge(rowmean_macaw, rowflagmean_swp, by = c("Block","Treatment","Date"))
+
+names(rowflagmean_swp)
+names(rowmean_macaw) 
+```
+
+
+#---------Useless----------------------------------
+
 ##Calculate PRI
 ```{r}
 ##raw PRI

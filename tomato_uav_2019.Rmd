@@ -59,14 +59,14 @@ therm_082219 <- raster(file.path(path_stacks, "tomato_082219_thermal.tif"))
 ```{r}
 path_output <- "Z:/CC_UCD_atRR/data2/UAV_MeeraeTomato/outputs"
 
-veg_061219 <- calc(uav_061219$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+veg_061219 <- calc(uav_061219$ndvi, function(x){x[x<0.6]<- NA; return(x)})
 uav_061219_masked <- raster::mask(uav_061219, veg_061219)
 writeRaster(veg_061219, file.path(path_output, "veg_061219_ndvi0.7.tif"))
 writeRaster(uav_061219_masked, file.path(path_output, "uav_061219_masked.tif"))
 rm(veg_061219)
 rm(uav_061219_masked)
 
-veg_062819 <- calc(uav_062819$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+veg_062819 <- calc(uav_062819$ndvi, function(x){x[x<0.6]<- NA; return(x)})
 uav_062819_masked <- raster::mask(uav_062819, veg_062819)
 writeRaster(veg_061219, file.path(path_output, "veg_061219_ndvi0.7.tif"))
 writeRaster(uav_061219_masked, file.path(path_output, "uav_061219_masked.tif"))
@@ -74,25 +74,31 @@ rm(veg_061219)
 rm(uav_061219_masked)
 
 
-veg_071219 <- calc(uav_071219$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+veg_061219 <- calc(uav_061219$ndvi, function(x){x[x<0.6]<- NA; return(x)})
+uav_061219_masked <- raster::mask(uav_061219, veg_061219)
+
+veg_062819 <- calc(uav_062819$ndvi, function(x){x[x<0.6]<- NA; return(x)})
+uav_062819_masked <- raster::mask(uav_062819, veg_062819)
+
+veg_071219 <- calc(uav_071219$ndvi, function(x){x[x<0.6]<- NA; return(x)})
 uav_071219_masked <- raster::mask(uav_071219, veg_071219)
 
-veg_071719 <- calc(uav_071719$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+veg_071719 <- calc(uav_071719$ndvi, function(x){x[x<0.6]<- NA; return(x)})
 uav_071719_masked <- raster::mask(uav_071719, veg_071719)
 
-veg_072619 <- calc(uav_072619$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+veg_072619 <- calc(uav_072619$ndvi, function(x){x[x<0.6]<- NA; return(x)})
 uav_072619_masked <- raster::mask(uav_072619, veg_072619)
 
-veg_080219 <- calc(uav_080219$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+veg_080219 <- calc(uav_080219$ndvi, function(x){x[x<0.6]<- NA; return(x)})
 uav_080219_masked <- raster::mask(uav_080219, veg_080219)
 
-veg_081019 <- calc(uav_081019$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+veg_081019 <- calc(uav_081019$ndvi, function(x){x[x<0.6]<- NA; return(x)})
 uav_081019_masked <- raster::mask(uav_081019, veg_081019)
 
-veg_081519 <- calc(uav_081519$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+veg_081519 <- calc(uav_081519$ndvi, function(x){x[x<0.6]<- NA; return(x)})
 uav_081519_masked <- raster::mask(uav_081519, veg_081519)
 
-veg_082219 <- calc(uav_082219$ndvi, function(x){x[x<0.7]<- NA; return(x)})
+veg_082219 <- calc(uav_082219$ndvi, function(x){x[x<0.6]<- NA; return(x)})
 uav_082219_masked <- raster::mask(uav_082219, veg_082219)
 
 
@@ -148,7 +154,287 @@ flagmean_uav_081019 <- ref_extract(uav_081019_masked, flags_2019, mean, 0.5)
 
 flagmean_uav_081519 <- ref_extract(uav_081519_masked, flags_2019, mean, 0.5)
 ```
-##extracion of row average reflectance from unmasked raster
+##Row average 
+###Unmasked 
+```{r}
+#0612
+rowmean_uav_061219_1ft_nomask <- ref_extract(uav_061219, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_061219_2ft_nomask <- ref_extract(uav_061219, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_061219_3ft_nomask <- ref_extract(uav_061219, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+
+#0628
+rowmean_uav_062819_1ft_nomask <- ref_extract(uav_062819, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_062819_2ft_nomask <- ref_extract(uav_062819, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_062819_3ft_nomask <- ref_extract(uav_062819, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0712
+rowmean_uav_071219_1ft_nomask <- ref_extract(uav_071219, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_071219_2ft_nomask <- ref_extract(uav_071219, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_071219_3ft_nomask <- ref_extract(uav_071219, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0717
+rowmean_uav_071719_1ft_nomask <- ref_extract(uav_071719, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_071719_2ft_nomask <- ref_extract(uav_071719, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_071719_3ft_nomask <- ref_extract(uav_071719, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0726
+rowmean_uav_072619_1ft_nomask <- ref_extract(uav_072619, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_072619_2ft_nomask <- ref_extract(uav_072619, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_072619_3ft_nomask <- ref_extract(uav_072619, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0802
+rowmean_uav_080219_1ft_nomask <- ref_extract(uav_080219, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_080219_2ft_nomask <- ref_extract(uav_080219, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_080219_3ft_nomask <- ref_extract(uav_080219, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0810
+rowmean_uav_081019_1ft_nomask <- ref_extract(uav_081019, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_081019_2ft_nomask <- ref_extract(uav_081019, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_081019_3ft_nomask <- ref_extract(uav_081019, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0815
+rowmean_uav_081519_1ft_nomask <- ref_extract(uav_081519, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_081519_2ft_nomask <- ref_extract(uav_081519, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_081519_3ft_nomask <- ref_extract(uav_081519, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0822
+rowmean_uav_082219_1ft_nomask <- ref_extract(uav_082219, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_082219_2ft_nomask <- ref_extract(uav_082219, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_082219_3ft_nomask <- ref_extract(uav_082219, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#add date 
+rowmean_uav_061219_1ft_nomask$Date <- "2019-06-12"
+rowmean_uav_061219_2ft_nomask$Date <- "2019-06-12"
+rowmean_uav_061219_3ft_nomask$Date <- "2019-06-12"
+rowmean_uav_062819_1ft_nomask$Date <- "2019-06-28"
+rowmean_uav_062819_2ft_nomask$Date <- "2019-06-28"
+rowmean_uav_062819_3ft_nomask$Date <- "2019-06-28"
+rowmean_uav_071219_1ft_nomask$Date <- "2019-07-12"
+rowmean_uav_071219_2ft_nomask$Date <- "2019-07-12"
+rowmean_uav_071219_3ft_nomask$Date <- "2019-07-12"
+rowmean_uav_071719_1ft_nomask$Date <- "2019-07-17"
+rowmean_uav_071719_2ft_nomask$Date <- "2019-07-17"
+rowmean_uav_071719_3ft_nomask$Date <- "2019-07-17"
+rowmean_uav_072619_1ft_nomask$Date <- "2019-07-26"
+rowmean_uav_072619_2ft_nomask$Date <- "2019-07-26"
+rowmean_uav_072619_3ft_nomask$Date <- "2019-07-26"
+rowmean_uav_080219_1ft_nomask$Date <- "2019-08-02"
+rowmean_uav_080219_2ft_nomask$Date <- "2019-08-02"
+rowmean_uav_080219_3ft_nomask$Date <- "2019-08-02"
+rowmean_uav_081019_1ft_nomask$Date <- "2019-08-10"
+rowmean_uav_081019_2ft_nomask$Date <- "2019-08-10"
+rowmean_uav_081019_3ft_nomask$Date <- "2019-08-10"
+rowmean_uav_081519_1ft_nomask$Date <- "2019-08-15"
+rowmean_uav_081519_2ft_nomask$Date <- "2019-08-15"
+rowmean_uav_081519_3ft_nomask$Date <- "2019-08-15"
+rowmean_uav_082219_1ft_nomask$Date <- "2019-08-22"
+rowmean_uav_082219_2ft_nomask$Date <- "2019-08-22"
+rowmean_uav_082219_3ft_nomask$Date <- "2019-08-22"
+
+
+#combine them together 
+##1ft 
+rowmean_uav_1ft_nomask <- rbind(rowmean_uav_061219_1ft_nomask, rowmean_uav_062819_1ft_nomask, rowmean_uav_071219_1ft_nomask, rowmean_uav_071719_1ft_nomask, rowmean_uav_072619_1ft_nomask, rowmean_uav_080219_1ft_nomask, rowmean_uav_081019_1ft_nomask, rowmean_uav_081519_1ft_nomask, rowmean_uav_082219_1ft_nomask)
+##2ft
+rowmean_uav_2ft_nomask <- rbind(rowmean_uav_061219_2ft_nomask, rowmean_uav_062819_2ft_nomask, rowmean_uav_071219_2ft_nomask, rowmean_uav_071719_2ft_nomask, rowmean_uav_072619_2ft_nomask, rowmean_uav_080219_2ft_nomask, rowmean_uav_081019_2ft_nomask, rowmean_uav_081519_2ft_nomask, rowmean_uav_082219_2ft_nomask)
+##3ft
+rowmean_uav_3ft_nomask <- rbind(rowmean_uav_061219_3ft_nomask, rowmean_uav_062819_3ft_nomask, rowmean_uav_071219_3ft_nomask, rowmean_uav_071719_3ft_nomask, rowmean_uav_072619_3ft_nomask, rowmean_uav_080219_3ft_nomask, rowmean_uav_081019_3ft_nomask, rowmean_uav_081519_3ft_nomask, rowmean_uav_082219_3ft_nomask)
+
+#output
+path_df <- "/z0/zt92/Tomato_biomass/tomato_analysis_2019/dataframes"
+write.csv(rowmean_uav_1ft_nomask, file.path(path_df, "rowmean_uav_1ft_nomask.csv"), row.names = FALSE)
+write.csv(rowmean_uav_2ft_nomask, file.path(path_df, "rowmean_uav_2ft_nomask.csv"), row.names = FALSE)
+write.csv(rowmean_uav_3ft_nomask, file.path(path_df, "rowmean_uav_3ft_nomask.csv"), row.names = FALSE)
+
+#--------------------------------------------------#
+
+#0612
+rowmean_uav_061219_1ft_masked <- ref_extract(uav_061219_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_061219_2ft_masked <- ref_extract(uav_061219_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_061219_3ft_masked <- ref_extract(uav_061219_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+
+#0628
+rowmean_uav_062819_1ft_masked <- ref_extract(uav_062819_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_062819_2ft_masked <- ref_extract(uav_062819_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_062819_3ft_masked <- ref_extract(uav_062819_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0712
+rowmean_uav_071219_1ft_masked <- ref_extract(uav_071219_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_071219_2ft_masked <- ref_extract(uav_071219_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_071219_3ft_masked <- ref_extract(uav_071219_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0717
+rowmean_uav_071719_1ft_masked <- ref_extract(uav_071719_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_071719_2ft_masked <- ref_extract(uav_071719_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_071719_3ft_masked <- ref_extract(uav_071719_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0726
+rowmean_uav_072619_1ft_masked <- ref_extract(uav_072619_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_072619_2ft_masked <- ref_extract(uav_072619_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_072619_3ft_masked <- ref_extract(uav_072619_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0802
+rowmean_uav_080219_1ft_masked <- ref_extract(uav_080219_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_080219_2ft_masked <- ref_extract(uav_080219_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_080219_3ft_masked <- ref_extract(uav_080219_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0810
+rowmean_uav_081019_1ft_masked <- ref_extract(uav_081019_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_081019_2ft_masked <- ref_extract(uav_081019_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_081019_3ft_masked <- ref_extract(uav_081019_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0815
+rowmean_uav_081519_1ft_masked <- ref_extract(uav_081519_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_081519_2ft_masked <- ref_extract(uav_081519_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_081519_3ft_masked <- ref_extract(uav_081519_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0822
+rowmean_uav_082219_1ft_masked <- ref_extract(uav_082219_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_082219_2ft_masked <- ref_extract(uav_082219_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_082219_3ft_masked <- ref_extract(uav_082219_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#add date 
+rowmean_uav_061219_1ft_masked$Date <- "2019-06-12"
+rowmean_uav_061219_2ft_masked$Date <- "2019-06-12"
+rowmean_uav_061219_3ft_masked$Date <- "2019-06-12"
+rowmean_uav_062819_1ft_masked$Date <- "2019-06-28"
+rowmean_uav_062819_2ft_masked$Date <- "2019-06-28"
+rowmean_uav_062819_3ft_masked$Date <- "2019-06-28"
+rowmean_uav_071219_1ft_masked$Date <- "2019-07-12"
+rowmean_uav_071219_2ft_masked$Date <- "2019-07-12"
+rowmean_uav_071219_3ft_masked$Date <- "2019-07-12"
+rowmean_uav_071719_1ft_masked$Date <- "2019-07-17"
+rowmean_uav_071719_2ft_masked$Date <- "2019-07-17"
+rowmean_uav_071719_3ft_masked$Date <- "2019-07-17"
+rowmean_uav_072619_1ft_masked$Date <- "2019-07-26"
+rowmean_uav_072619_2ft_masked$Date <- "2019-07-26"
+rowmean_uav_072619_3ft_masked$Date <- "2019-07-26"
+rowmean_uav_080219_1ft_masked$Date <- "2019-08-02"
+rowmean_uav_080219_2ft_masked$Date <- "2019-08-02"
+rowmean_uav_080219_3ft_masked$Date <- "2019-08-02"
+rowmean_uav_081019_1ft_masked$Date <- "2019-08-10"
+rowmean_uav_081019_2ft_masked$Date <- "2019-08-10"
+rowmean_uav_081019_3ft_masked$Date <- "2019-08-10"
+rowmean_uav_081519_1ft_masked$Date <- "2019-08-15"
+rowmean_uav_081519_2ft_masked$Date <- "2019-08-15"
+rowmean_uav_081519_3ft_masked$Date <- "2019-08-15"
+rowmean_uav_082219_1ft_masked$Date <- "2019-08-22"
+rowmean_uav_082219_2ft_masked$Date <- "2019-08-22"
+rowmean_uav_082219_3ft_masked$Date <- "2019-08-22"
+
+
+#combine them together 
+##1ft 
+rowmean_uav_1ft_masked <- rbind(rowmean_uav_061219_1ft_masked, rowmean_uav_062819_1ft_masked, rowmean_uav_071219_1ft_masked, rowmean_uav_071719_1ft_masked, rowmean_uav_072619_1ft_masked, rowmean_uav_080219_1ft_masked, rowmean_uav_081019_1ft_masked, rowmean_uav_081519_1ft_masked, rowmean_uav_082219_1ft_masked)
+##2ft
+rowmean_uav_2ft_masked <- rbind(rowmean_uav_061219_2ft_masked, rowmean_uav_062819_2ft_masked, rowmean_uav_071219_2ft_masked, rowmean_uav_071719_2ft_masked, rowmean_uav_072619_2ft_masked, rowmean_uav_080219_2ft_masked, rowmean_uav_081019_2ft_masked, rowmean_uav_081519_2ft_masked, rowmean_uav_082219_2ft_masked)
+##3ft
+rowmean_uav_3ft_masked <- rbind(rowmean_uav_061219_3ft_masked, rowmean_uav_062819_3ft_masked, rowmean_uav_071219_3ft_masked, rowmean_uav_071719_3ft_masked, rowmean_uav_072619_3ft_masked, rowmean_uav_080219_3ft_masked, rowmean_uav_081019_3ft_masked, rowmean_uav_081519_3ft_masked, rowmean_uav_082219_3ft_masked)
+
+#output
+path_df <- "/z0/zt92/Tomato_biomass/tomato_analysis_2019/dataframes"
+write.csv(rowmean_uav_1ft_masked, file.path(path_df, "rowmean_uav_1ft_masked.csv"), row.names = FALSE)
+write.csv(rowmean_uav_2ft_masked, file.path(path_df, "rowmean_uav_2ft_masked.csv"), row.names = FALSE)
+write.csv(rowmean_uav_3ft_masked, file.path(path_df, "rowmean_uav_3ft_masked.csv"), row.names = FALSE)
+
+```
+###Masked
+```{r}
+#0612
+rowmean_uav_061219_1ft_masked <- ref_extract(uav_061219_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_061219_2ft_masked <- ref_extract(uav_061219_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_061219_3ft_masked <- ref_extract(uav_061219_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+
+#0628
+rowmean_uav_062819_1ft_masked <- ref_extract(uav_062819_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_062819_2ft_masked <- ref_extract(uav_062819_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_062819_3ft_masked <- ref_extract(uav_062819_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0712
+rowmean_uav_071219_1ft_masked <- ref_extract(uav_071219_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_071219_2ft_masked <- ref_extract(uav_071219_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_071219_3ft_masked <- ref_extract(uav_071219_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0717
+rowmean_uav_071719_1ft_masked <- ref_extract(uav_071719_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_071719_2ft_masked <- ref_extract(uav_071719_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_071719_3ft_masked <- ref_extract(uav_071719_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0726
+rowmean_uav_072619_1ft_masked <- ref_extract(uav_072619_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_072619_2ft_masked <- ref_extract(uav_072619_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_072619_3ft_masked <- ref_extract(uav_072619_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0802
+rowmean_uav_080219_1ft_masked <- ref_extract(uav_080219_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_080219_2ft_masked <- ref_extract(uav_080219_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_080219_3ft_masked <- ref_extract(uav_080219_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0810
+rowmean_uav_081019_1ft_masked <- ref_extract(uav_081019_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_081019_2ft_masked <- ref_extract(uav_081019_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_081019_3ft_masked <- ref_extract(uav_081019_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0815
+rowmean_uav_081519_1ft_masked <- ref_extract(uav_081519_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_081519_2ft_masked <- ref_extract(uav_081519_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_081519_3ft_masked <- ref_extract(uav_081519_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#0822
+rowmean_uav_082219_1ft_masked <- ref_extract(uav_082219_masked, shp = rows_2019_cen1ft, FUN =  mean, buff = 0)
+rowmean_uav_082219_2ft_masked <- ref_extract(uav_082219_masked, shp = rows_2019_cen2ft, FUN =  mean, buff = 0)
+rowmean_uav_082219_3ft_masked <- ref_extract(uav_082219_masked, shp = rows_2019_cen3ft, FUN =  mean, buff = 0)
+
+#add date 
+rowmean_uav_061219_1ft_masked$Date <- "2019-06-12"
+rowmean_uav_061219_2ft_masked$Date <- "2019-06-12"
+rowmean_uav_061219_3ft_masked$Date <- "2019-06-12"
+rowmean_uav_062819_1ft_masked$Date <- "2019-06-28"
+rowmean_uav_062819_2ft_masked$Date <- "2019-06-28"
+rowmean_uav_062819_3ft_masked$Date <- "2019-06-28"
+rowmean_uav_071219_1ft_masked$Date <- "2019-07-12"
+rowmean_uav_071219_2ft_masked$Date <- "2019-07-12"
+rowmean_uav_071219_3ft_masked$Date <- "2019-07-12"
+rowmean_uav_071719_1ft_masked$Date <- "2019-07-17"
+rowmean_uav_071719_2ft_masked$Date <- "2019-07-17"
+rowmean_uav_071719_3ft_masked$Date <- "2019-07-17"
+rowmean_uav_072619_1ft_masked$Date <- "2019-07-26"
+rowmean_uav_072619_2ft_masked$Date <- "2019-07-26"
+rowmean_uav_072619_3ft_masked$Date <- "2019-07-26"
+rowmean_uav_080219_1ft_masked$Date <- "2019-08-02"
+rowmean_uav_080219_2ft_masked$Date <- "2019-08-02"
+rowmean_uav_080219_3ft_masked$Date <- "2019-08-02"
+rowmean_uav_081019_1ft_masked$Date <- "2019-08-10"
+rowmean_uav_081019_2ft_masked$Date <- "2019-08-10"
+rowmean_uav_081019_3ft_masked$Date <- "2019-08-10"
+rowmean_uav_081519_1ft_masked$Date <- "2019-08-15"
+rowmean_uav_081519_2ft_masked$Date <- "2019-08-15"
+rowmean_uav_081519_3ft_masked$Date <- "2019-08-15"
+rowmean_uav_082219_1ft_masked$Date <- "2019-08-22"
+rowmean_uav_082219_2ft_masked$Date <- "2019-08-22"
+rowmean_uav_082219_3ft_masked$Date <- "2019-08-22"
+
+
+#combine them together 
+##1ft 
+rowmean_uav_1ft_masked <- rbind(rowmean_uav_061219_1ft_masked, rowmean_uav_062819_1ft_masked, rowmean_uav_071219_1ft_masked, rowmean_uav_071719_1ft_masked, rowmean_uav_072619_1ft_masked, rowmean_uav_080219_1ft_masked, rowmean_uav_081019_1ft_masked, rowmean_uav_081519_1ft_masked, rowmean_uav_082219_1ft_masked)
+##2ft
+rowmean_uav_2ft_masked <- rbind(rowmean_uav_061219_2ft_masked, rowmean_uav_062819_2ft_masked, rowmean_uav_071219_2ft_masked, rowmean_uav_071719_2ft_masked, rowmean_uav_072619_2ft_masked, rowmean_uav_080219_2ft_masked, rowmean_uav_081019_2ft_masked, rowmean_uav_081519_2ft_masked, rowmean_uav_082219_2ft_masked)
+##3ft
+rowmean_uav_3ft_masked <- rbind(rowmean_uav_061219_3ft_masked, rowmean_uav_062819_3ft_masked, rowmean_uav_071219_3ft_masked, rowmean_uav_071719_3ft_masked, rowmean_uav_072619_3ft_masked, rowmean_uav_080219_3ft_masked, rowmean_uav_081019_3ft_masked, rowmean_uav_081519_3ft_masked, rowmean_uav_082219_3ft_masked)
+
+#output
+path_df <- "/z0/zt92/Tomato_biomass/tomato_analysis_2019/dataframes"
+write.csv(rowmean_uav_1ft_masked, file.path(path_df, "rowmean_uav_1ft_masked.csv"), row.names = FALSE)
+write.csv(rowmean_uav_2ft_masked, file.path(path_df, "rowmean_uav_2ft_masked.csv"), row.names = FALSE)
+write.csv(rowmean_uav_3ft_masked, file.path(path_df, "rowmean_uav_3ft_masked.csv"), row.names = FALSE)
+
+```
+
+###Previous code
 ```{r}
 rowmean_uav_061219 <- ref_extract(uav_061219, rows_2019, mean)
 rowmean_uav_062819 <- ref_extract(uav_062819, rows_2019, mean)
