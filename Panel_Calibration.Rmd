@@ -1,0 +1,59 @@
+---
+title: "Panel_Calibration"
+author: "Zhehan"
+date: "9/25/2020"
+output: html_document
+---
+#Library
+```{r}
+library(hsdar)
+library(ggplot2)
+library(spectrolab)
+library(corrplot)
+library(readxl)
+library(ggthemes)
+library(papeR)
+library(sjPlot)
+```
+
+#read svc files
+```{r}
+path_svc_panel <- "D:/MACAW_tomato/Ref_Panels"
+list.files(path_svc_panel)
+
+panel_svc <- spectrolab::read_spectra(path_svc_panel, format = "sig")
+
+#n <- names(panel_svc)
+names_panel <- names(panel_svc)
+names_panel
+wavelen_panel <- spectrolab::bands(panel_svc)
+ref_panel <- spectrolab::value(panel_svc)
+plot(panel_svc[1])
+
+wave_panel_1 <- spectrolab::bands(panel_svc[1])
+ref_panel_1 <- spectrolab::value(panel_svc[1])
+df_panel_1 <- data.frame("wavelength"=wave_panel_1, "reflectance"=t(ref_panel_1))
+
+wave_panel_4 <- spectrolab::bands(panel_svc[4])
+ref_panel_4 <- spectrolab::value(panel_svc[4])
+df_panel_4 <- data.frame("wavelength"=wave_panel_4, "reflectance"=t(ref_panel_4))
+
+```
+
+
+#Plot the 
+```{r}
+plot(panel_svc[1])
+white_0628 <- subset(panel_macaw_long, Date == "0628" & Color == "White")
+black_0628 <- subset(panel_macaw_long, Date == "0628" & Color == "Black")
+ggplot()+ geom_line(aes(x = wavelength, y = reflectance), data = white_0628)+geom_line(aes(x = wavelength, y = reflectance,color = "red"), data = df_panel_1) + xlim(c(440,1000))
+ggplot()+ geom_line(aes(x = wavelength, y = reflectance), data = black_0628)+geom_line(aes(x = wavelength, y = reflectance,color = "red"), data = df_panel_4)# + xlim(c(440,1000))
+
+
+
+ggplot(subset(panel_macaw_long, Date == "0628" & Color == "White"), aes(x = wavelength, y = reflectance)) + geom_line() + geom_point() + geom_line(df_panel_1) #+ geom_point(aes(x = wavelen_panel,  y = ref_panel))
+plot(subset(panel_macaw_long, Date == "0628" & Color == "White")$wavelength, subset(panel_macaw_long, Date == "0628" & Color == "White")$reflectance, type = "l")
+ggplot(subset(panel_macaw_long, Date != "0815"), aes(x = wavelength, y = reflectance, color = Date, shape = Color)) + geom_point(aes(shape = Color)) + geom_line(aes(linetype =Color)) + theme_bw()
+
+```
+

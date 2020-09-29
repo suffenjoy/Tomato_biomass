@@ -9,15 +9,22 @@ output: html_document
 library(raster)
 library(ggplot2)
 library(dplyr)
+library(qdapRegex)
+library(MASS)
+library(leaps)
 library(stringr)
 library(EBImage)
 library(readxl)
 library(caret)
+library(caTools)
 library(Metrics)
 library(tidyr)
 library(ggthemes)
 library(ggpubr)
+library(stringi)
 library(tidyr)
+library(stringi)
+library(agricolae)
 ```
 
 #Shapefiles
@@ -39,11 +46,23 @@ rows_2019_cen3ft <- shapefile(file.path(path_shp, "tomato_rows_2019_cen3ft"))
 ```{r}
 path_shp <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/shapefiles"
 #use the adjusted one
-flagbuff_2019 <- shapefile(file.path(path_shp, "flags_tomato_2019_adj_buffer.shp"))
+flagbuff_2019 <- shapefile(file.path(path_shp, "flags_tomato_2019_adj_buffer_corrected.shp"))
 rows_2019 <- shapefile(file.path(path_shp, "tomato_rows_2019.shp"))
 rows_2019_cen1ft <- shapefile(file.path(path_shp, "tomato_rows_2019_cen1ft"))
 rows_2019_cen2ft <- shapefile(file.path(path_shp, "tomato_rows_2019_cen2ft"))
 rows_2019_cen3ft <- shapefile(file.path(path_shp, "tomato_rows_2019_cen3ft"))
+
+#subset 
+rows_2019_sb <- subset(rows_2019, Treatment %in% c("CONTROL DDD","CONTROL WW","BAYER 16 (SOIL) WW"))  #20
+rows_2019_conddd <- subset(rows_2019, Treatment == "CONTROL DDD")  #5
+rows_2019_conww <- subset(rows_2019, Treatment == "CONTROL WW" & Block != "CHBIO") #5
+rows_2019_bayww <- subset(rows_2019, Treatment == "BAYER 16 (SOIL) WW")  #5
+
+#output
+shapefile(rows_2019_sb, file.path(path_shp, "rows_2019_sb.shp"))
+shapefile(rows_2019_conddd, file.path(path_shp, "rows_2019_conddd.shp"))
+shapefile(rows_2019_conww, file.path(path_shp, "rows_2019_conww.shp"),overwrite = TRUE)
+shapefile(rows_2019_bayww, file.path(path_shp, "rows_2019_bayww.shp"))
 
 length(unique(flagbuff_2019$Row))
 length(unique(flagbuff_2019$Plot))
@@ -358,6 +377,24 @@ ref_extract_flag <- function(uav,shp, FUN, buff){
 ```
 ###Extract different versions of mask  
 ```{r}
+#read micasense img
+uav_062819_masked0.6 <- read_uav(path_output_ms, "uav_062819_masked0.6.tif")
+uav_080219_masked0.6 <- read_uav(path_output_ms, "uav_080219_masked0.6.tif")
+uav_081519_masked0.6 <- read_uav(path_output_ms, "uav_081519_masked0.6.tif")
+names(uav_062819_masked0.6)
+plot(uav_062819_masked0.6)
+
+uav_061219_masked0.5 <- read_uav(path_output_ms, "uav_061219_masked0.5.tif")
+uav_062819_masked0.5 <- read_uav(path_output_ms, "uav_062819_masked0.5.tif")
+uav_071219_masked0.5 <- read_uav(path_output_ms, "uav_071219_masked0.5.tif")
+uav_071719_masked0.5 <- read_uav(path_output_ms, "uav_071719_masked0.5.tif")
+uav_072619_masked0.5 <- read_uav(path_output_ms, "uav_072619_masked0.5.tif")
+uav_080219_masked0.5 <- read_uav(path_output_ms, "uav_080219_masked0.5.tif")
+uav_081019_masked0.5 <- read_uav(path_output_ms, "uav_081019_masked0.5.tif")
+uav_081519_masked0.5 <- read_uav(path_output_ms, "uav_081519_masked0.5.tif")
+
+#read_uav(path_uav, "tomato_061219_stacks2.tif")
+
 #0.5 as threshold
 flagmean_uav_061219_masked0.5 <- ref_extract_flag(uav_061219_masked0.5, flagbuff_2019, mean, 0)
 flagmean_uav_062819_masked0.5 <- ref_extract_flag(uav_062819_masked0.5, flagbuff_2019, mean, 0)
@@ -404,7 +441,9 @@ flagmean_uav_081019_masked0.5$Date <- as.Date("2019-08-10")
 flagmean_uav_081519_masked0.5$Date <- as.Date("2019-08-15")
 flagmean_uav_082219_masked0.5$Date <- as.Date("2019-08-22")
 #combine them together
-flagmean_uav_masked0.5 <- rbind(flagmean_uav_061219_masked0.5, flagmean_uav_062819_masked0.5, flagmean_uav_071219_masked0.5, flagmean_uav_071719_masked0.5, flagmean_uav_072619_masked0.5, flagmean_uav_080219_masked0.5, flagmean_uav_081019_masked0.5, flagmean_uav_081519_masked0.5, flagmean_uav_082219_masked0.5)
+#flagmean_uav_masked0.6 <- rbind(flagmean_uav_062819_masked0.6, flagmean_uav_080219_masked0.6, flagmean_uav_081519_masked0.6)
+
+flagmean_uav_masked0.5 <- rbind(flagmean_uav_061219_masked0.5, flagmean_uav_062819_masked0.5, flagmean_uav_071219_masked0.5, flagmean_uav_071719_masked0.5, flagmean_uav_072619_masked0.5, flagmean_uav_080219_masked0.5, flagmean_uav_081019_masked0.5, flagmean_uav_081519_masked0.5)
 
 #0.6
 #add date
@@ -418,7 +457,8 @@ flagmean_uav_081019_masked0.6$Date <- as.Date("2019-08-10")
 flagmean_uav_081519_masked0.6$Date <- as.Date("2019-08-15")
 flagmean_uav_082219_masked0.6$Date <- as.Date("2019-08-22")
 #combine them together
-flagmean_uav_masked0.6 <- rbind(flagmean_uav_061219_masked0.6, flagmean_uav_062819_masked0.6, flagmean_uav_071219_masked0.6, flagmean_uav_071719_masked0.6, flagmean_uav_072619_masked0.6, flagmean_uav_080219_masked0.6, flagmean_uav_081019_masked0.6, flagmean_uav_081519_masked0.6, flagmean_uav_082219_masked0.6)
+flagmean_uav_masked0.5 <- rbind(flagmean_uav_062819_masked0.5, flagmean_uav_080219_masked0.5, flagmean_uav_081519_masked0.5)
+#flagmean_uav_masked0.6 <- rbind(flagmean_uav_061219_masked0.6, flagmean_uav_062819_masked0.6, flagmean_uav_071219_masked0.6, flagmean_uav_071719_masked0.6, flagmean_uav_072619_masked0.6, flagmean_uav_080219_masked0.6, flagmean_uav_081019_masked0.6, flagmean_uav_081519_masked0.6, flagmean_uav_082219_masked0.6)
 
 #add date
 flagmean_uav_061219_nomask$Date <- as.Date("2019-06-12")
@@ -435,7 +475,59 @@ flagmean_uav_nomask <- rbind(flagmean_uav_061219_nomask, flagmean_uav_062819_nom
 
 ```
 
+###Boxplot
+```{r}
+flagmean_uav_masked0.5$Treatment <- factor(flagmean_uav_masked0.5$Treatment, levels = c("BAYER 16 (SOIL) WW", "CONTROL WW", "CONTROL DDD"), order = TRUE)
+flagmean_uav_masked0.6$Treatment <- factor(flagmean_uav_masked0.6$Treatment, levels = c("BAYER 16 (SOIL) WW", "CONTROL WW", "CONTROL DDD"), order = TRUE)
+#flagmean_macaw_phys$Treatment2 <- factor(flagmean_macaw_phys$Treatment, levels = c("BAYER 16 (SOIL) WW", "CONTROL WW", "CONTROL DDD"), order = TRUE)
 
+ggplot(flagmean_uav_masked0.5, aes(x = as.factor(Date), y = ndvi, fill = Treatment)) + geom_boxplot(position = position_dodge(0.75))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NDVI") + scale_fill_tableau() + ggtitle("NDVI from Micasense Plant Average")
+ggplot(flagmean_uav_masked0.5, aes(x = as.factor(Date), y = nir, fill = Treatment)) + geom_boxplot(position = position_dodge(0.75))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NIR") + scale_fill_tableau() + ggtitle("NIR from Micasense Plant Average")
+ggplot(flagmean_uav_masked0.5, aes(x = as.factor(Date), y = rededge, fill = Treatment)) + geom_boxplot(position = position_dodge(0.75))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Rededge") + scale_fill_tableau() + ggtitle("Rededge from Micasense Plant Average")
+ggplot(flagmean_uav_masked0.5, aes(x = as.factor(Date), y = red, fill = Treatment)) + geom_boxplot(position = position_dodge(0.75))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Red") + scale_fill_tableau() + ggtitle("Red from Micasense Plant Average")
+ggplot(flagmean_uav_masked0.5, aes(x = as.factor(Date), y = green, fill = Treatment)) + geom_boxplot(position = position_dodge(0.75))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Green") + scale_fill_tableau() + ggtitle("Green from Micasense Plant Average")
+ggplot(flagmean_uav_masked0.5, aes(x = as.factor(Date), y = blue, fill = Treatment)) + geom_boxplot(position = position_dodge(0.75))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Blue") + scale_fill_tableau() + ggtitle("Blue from Micasense Plant Average")
+
+
+ggplot(flagmean_uav_masked0.6, aes(x = as.factor(Date), y = ndvi, fill = Treatment)) + geom_boxplot(position = position_dodge(0.75))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NDVI") + scale_fill_tableau() + ggtitle("NDVI from Micasense Plant Average")
+ggplot(flagmean_uav_masked0.6, aes(x = as.factor(Date), y = nir, fill = Treatment)) + geom_boxplot(position = position_dodge(0.75))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NIR") + scale_fill_tableau() + ggtitle("NIR from Micasense Plant Average")
+ggplot(flagmean_uav_masked0.6, aes(x = as.factor(Date), y = rededge, fill = Treatment)) + geom_boxplot(position = position_dodge(0.75))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Rededge") + scale_fill_tableau() + ggtitle("Rededge from Micasense Plant Average")
+ggplot(flagmean_uav_masked0.6, aes(x = as.factor(Date), y = red, fill = Treatment)) + geom_boxplot(position = position_dodge(0.75))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Red") + scale_fill_tableau() + ggtitle("Red from Micasense Plant Average")
+ggplot(flagmean_uav_masked0.6, aes(x = as.factor(Date), y = green, fill = Treatment)) + geom_boxplot(position = position_dodge(0.75))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Green") + scale_fill_tableau() + ggtitle("Green from Micasense Plant Average")
+ggplot(flagmean_uav_masked0.6, aes(x = as.factor(Date), y = blue, fill = Treatment)) + geom_boxplot(position = position_dodge(0.75))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Blue") + scale_fill_tableau() + ggtitle("Blue from Micasense Plant Average")
+
+
+```
+##Extraction of the Row Average
+```{r}
+path_df <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/dataframes"
+list.files(path_df)
+rowmean_uav_3ft_masked <- read.csv(file.path(path_df, "rowmean_uav_3ft_masked.csv"))
+View(rowmean_uav_masked)
+#subset
+rowmean_uav_3ft_masked_sb <- subset(rowmean_uav_3ft_masked, Treatment %in% c("BAYER 16 (SOIL) WW", "CONTROL WW", "CONTROL DDD"))
+rowmean_uav_3ft_masked_sb$Treatment <- factor(rowmean_uav_3ft_masked_sb$Treatment, levels = c("BAYER 16 (SOIL) WW", "CONTROL WW", "CONTROL DDD"), order = TRUE)
+rowmean_uav_3ft_masked_sb <- subset(rowmean_uav_3ft_masked_sb, Row <= 179)
+#flagmean_uav_masked0.5$Treatment <- factor(flagmean_uav_masked0.5$Treatment, levels = c("BAYER 16 (SOIL) WW", "CONTROL WW", "CONTROL DDD"), order = TRUE)
+
+```
+
+###Boxplot
+```{r}
+
+
+ggplot(subset(rowmean_uav_3ft_masked_sb), aes(x = as.factor(Date), y = ndvi, fill = Treatment)) + geom_boxplot(position = position_dodge(0.75))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NDVI") + scale_fill_tableau() + ggtitle("NDVI from Micasense Row Average")
+
+ggplot(subset(rowmean_uav_3ft_masked_sb, Date %in% c("2019-06-28","2019-08-02","2019-08-15")), aes(x = as.factor(Date), y = ndvi, fill = Treatment)) + geom_boxplot(position = position_dodge(0.75))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NDVI") + scale_fill_tableau() + ggtitle("NDVI from Micasense Row Average")
+
+
+ggplot(subset(rowmean_uav_3ft_masked_sb, Date %in% c("2019-06-28","2019-08-02","2019-08-15")), aes(x = as.factor(Date), y = ndvi, fill = Treatment)) + geom_dotplot(binaxis = 'y', stackdir = 'center', position = position_dodge(0.75))
+
+#ggplot(subset(flagmean_macaw,Date!="2019-05-31"), aes(x = Date, y =  pri, fill=Treatment))+ geom_dotplot(binaxis = 'y', stackdir = 'center', position = position_dodge(0.75))
+
+```
+
+#-----------------------------------------------------------------
 #Read macaw imgs
 ##read 12band macaw function 
 ```{r}
@@ -897,6 +989,7 @@ ref_extract_flag <- function(uav,shp, FUN, buff){
   ext_uav$Block <- shp$Block
   ext_uav$Row <- shp$Row
   ext_uav$id <- shp$id
+  ext_uav$Plant <- shp$Plant
   
   #ext_uav$Plot <- shp$Plot
   return(ext_uav)
@@ -906,6 +999,21 @@ ref_extract_flag <- function(uav,shp, FUN, buff){
 ##Extract from the plants around the flags
 ###with vegetation mask
 ```{r}
+#mean with trim 0.1
+flagmean_macaw_053119_0.1 <- ref_extract_flag(macaw_053119_masked, shp = flagbuff_2019, FUN = function(x){mean(x, trim = 0.1, na.rm = FALSE)}, buff = 0)
+flagmean_macaw_062819_0.1 <- ref_extract_flag(macaw_062819_masked, shp = flagbuff_2019, FUN = function(x){mean(x, trim = 0.1, na.rm = FALSE)}, buff = 0)
+flagmean_macaw_080219_0.1 <- ref_extract_flag(macaw_080219_masked, shp = flagbuff_2019, FUN = function(x){mean(x, trim = 0.1, na.rm = FALSE)}, buff = 0)
+#flagmean_macaw_081019_0.1 <- ref_extract_flag(macaw_081019_masked, shp = flagbuff_2019, FUN = function(x){mean(x, trim = 0.1, na.rm = FALSE)}, buff = 0)
+flagmean_macaw_081519_0.1 <- ref_extract_flag(macaw_081519_masked, shp = flagbuff_2019, FUN = function(x){mean(x, trim = 0.1, na.rm = FALSE)}, buff = 0)
+flagmean_macaw_053119_0.1$Date <- "2019-05-31"
+flagmean_macaw_062819_0.1$Date <- "2019-06-28"
+flagmean_macaw_080219_0.1$Date <- "2019-08-02"
+flagmean_macaw_081519_0.1$Date <- "2019-08-15"
+#flagmean_macaw_082219_0.1$Date <- "2019-08-22"
+flagmean_macaw_0.1 <- rbind(flagmean_macaw_062819_0.1, flagmean_macaw_080219_0.1, flagmean_macaw_081519_0.1)
+
+
+
 flagmean_macaw_053119 <- ref_extract_flag(macaw_053119_masked, shp = flagbuff_2019, FUN = mean, buff = 0)
 flagmean_macaw_062819 <- ref_extract_flag(macaw_062819_masked, shp = flagbuff_2019, FUN = mean, buff = 0)
 flagmean_macaw_080219 <- ref_extract_flag(macaw_080219_masked, shp = flagbuff_2019, FUN = mean, buff = 0)
@@ -918,10 +1026,11 @@ flagmean_macaw_053119$Date <- "2019-05-31"
 flagmean_macaw_062819$Date <- "2019-06-28"
 flagmean_macaw_080219$Date <- "2019-08-02"
 flagmean_macaw_081519$Date <- "2019-08-15"
-flagmean_macaw_082219$Date <- "2019-08-22"
+#flagmean_macaw_082219$Date <- "2019-08-22"
 
 #combine them 
-flagmean_macaw <- rbind(flagmean_macaw_053119, flagmean_macaw_062819, flagmean_macaw_080219, flagmean_macaw_081519, flagmean_macaw_082219)
+flagmean_macaw <- rbind(flagmean_macaw_062819, flagmean_macaw_080219, flagmean_macaw_081519)
+#flagmean_macaw <- rbind(flagmean_macaw_053119, flagmean_macaw_062819, flagmean_macaw_080219, flagmean_macaw_081519, flagmean_macaw_082219)
 
 ```
 ###with fruit mask
@@ -1308,9 +1417,9 @@ TCARI.OSAVI <- function(macaw){
   x700 <- macaw$X700
   x670 <- macaw$X670
   x550 <- macaw$X550
-  x800 <- macaw$X800
+  X800 <- macaw$X800
   tcari <- 3*((x700-x670)-0.2*(x700-x550)*(x700/x670))
-  osavi <- ((1+0.16)*(x800-x670)/(x800+x670+0.16))
+  osavi <- ((1+0.16)*(X800-X670)/(X800+X670+0.16))
   tcari.osavi <- tcari/osavi
   return(tcari.osavi)
 }
@@ -1410,7 +1519,7 @@ flagmean_macaw$pri550 <- PRI550(flagmean_macaw)
 flagmean_macaw$prinorm <- PRInorm(flagmean_macaw)
 flagmean_macaw$prinorm550 <- PRInorm550(flagmean_macaw)
 flagmean_macaw$rer <- RER(flagmean_macaw)
-flagmean_macaw$rdvi <- RDVI(flagmean_macaw)fe
+flagmean_macaw$rdvi <- RDVI(flagmean_macaw)
 
 
 #output
@@ -1502,6 +1611,18 @@ swp_PL$SWP <- as.numeric(swp_PL$SWP)
 sum(is.na(swp_PL$SWP))
 dim(swp_PL)  #1070, 6
 
+for(i in 1:dim(swp_PL)[1]){
+  if(swp_PL[i,]$Date=="2019-06-26"){
+    swp_PL[i,]$Date= "2019-06-28"
+  }
+  if(swp_PL[i,]$Date=="2019-08-01"){
+    swp_PL[i,]$Date="2019-08-02"
+  }
+  if(swp_PL[i,]$Date=="2019-08-14"){
+    swp_PL[i,]$Date="2019-08-15"
+  }
+}
+
 rowflagmean_swp <- aggregate(swp_PL$SWP, by = list("Block"=swp_PL$Block, "Plot"=swp_PL$Plot, "Treatment"=swp_PL$Treatment, "Date"=swp_PL$Date), FUN = function(x){mean(x, na.rm=TRUE)})
 names(rowflagmean_swp)[5] <- "SWP"
 #rowflagmean_macaw_swp <- aggregate(swp_PL$SWP, by = list("Block"=swp_PL$Block, "Plot"=swp_PL$Plot, "Treatment"=swp_PL$Treatment, "Date"=swp_PL$Date), FUN = function(x){mean(x, na.rm=TRUE)})
@@ -1511,6 +1632,8 @@ sum(is.na(rowflagmean_macaw_swp$x))
 dim(rowflagmean_macaw_swp) #140, 6
 
 ```
+
+
 ##Read LiCOR
 ```{r}
 path_licor <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/dataframes/Physiology_Measurement/LICOR"
@@ -1530,6 +1653,19 @@ licor_PL <- do.call(rbind, list_licor)
 
 names(licor_PL)
 names(licor_PL)[4] <- "Plant"
+
+#change date
+for(i in 1:dim(licor_PL)[1]){
+  if(licor_PL[i,]$Date=="2019-06-26"){
+    licor_PL[i,]$Date= "2019-06-28"
+  }
+  if(licor_PL[i,]$Date=="2019-08-01"){
+    licor_PL[i,]$Date="2019-08-02"
+  }
+  if(licor_PL[i,]$Date=="2019-08-14"){
+    licor_PL[i,]$Date="2019-08-15"
+  }
+}
 
 rowflagmean_licor <- aggregate(licor_PL[5:6], by = list("Block"=licor_PL$Block, "Plot"=licor_PL$Plot, "Treatment"=licor_PL$Treatment, "Date"=licor_PL$Date), FUN = function(x){mean(x, na.rm=TRUE)})
 #rowflagmean_macaw_swp <- aggregate(swp_PL$SWP, by = list("Block"=swp_PL$Block, "Plot"=swp_PL$Plot, "Treatment"=swp_PL$Treatment, "Date"=swp_PL$Date), FUN = function(x){mean(x, na.rm=TRUE)})
@@ -2838,6 +2974,67 @@ head(flagmean_macaw)
 head(phys_BA)
 flagmean_macaw_phys <- merge(phys_BA, flagmean_macaw, by = c("Date","Row"))
 ```
+#Output the MACAW-based indices
+```{r}
+path_output <- "D:/MACAW_tomato/Outputs"
+path_shp <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/shapefiles"
+BND <- shapefile(file.path(path_shp, "tomato_BND_2019.shp"))
+#ndvi_081019 <- raster::crop(ndvi_081019, BND)
+
+#PRI 
+macaw_053119_PRI <- (macaw_053119_masked$X530 - macaw_053119_masked$X570)/(macaw_053119_masked$X530 + macaw_053119_masked$X570)
+macaw_062819_PRI <- (macaw_062819_masked$X530 - macaw_062819_masked$X570)/(macaw_062819_masked$X530 + macaw_062819_masked$X570)
+macaw_080219_PRI <- (macaw_080219_masked$X530 - macaw_080219_masked$X570)/(macaw_080219_masked$X530 + macaw_080219_masked$X570)
+macaw_081519_PRI <- (macaw_081519_masked$X530 - macaw_081519_masked$X570)/(macaw_081519_masked$X530 + macaw_081519_masked$X570)
+macaw_053119_PRI <- raster::crop(macaw_053119_PRI, BND)
+macaw_062819_PRI <- raster::crop(macaw_062819_PRI, BND)
+macaw_080219_PRI <- raster::crop(macaw_080219_PRI, BND)
+macaw_081519_PRI <- raster::crop(macaw_081519_PRI, BND)
+
+#output 
+writeRaster(macaw_053119_PRI, file.path(path_output, "macaw_053119_PRI.tif"), overwrite = TRUE)
+writeRaster(macaw_062819_PRI, file.path(path_output, "macaw_062819_PRI.tif"), overwrite = TRUE)
+writeRaster(macaw_080219_PRI, file.path(path_output, "macaw_080219_PRI.tif"), overwrite = TRUE)
+writeRaster(macaw_081519_PRI, file.path(path_output, "macaw_081519_PRI.tif"), overwrite = TRUE)
+
+#PRInorm
+##need to /65535
+PRInorm_map <- function(macaw){
+  #pri
+  x530 <- macaw$X530/65535
+  x570 <- macaw$X570/65535
+  pri <- (x530-x570)/(x530+x570)
+  #rdvi
+  red <- macaw$X670/65535
+  nir <- macaw$X800/65535
+  rdvi <- (nir-red)/(nir+red)^0.5
+  #rer
+  x700 <- macaw$X700/65535
+  x670 <- macaw$X670/65535
+  rer <- x700/x670
+  #PRInorm
+  prinorm <- pri/(rdvi*rer)
+  return(prinorm)
+}
+macaw_053119_PRInorm <- PRInorm_map(macaw_053119_masked)
+macaw_062819_PRInorm <- PRInorm_map(macaw_062819_masked)
+macaw_080219_PRInorm <- PRInorm_map(macaw_080219_masked)
+macaw_081519_PRInorm <- PRInorm_map(macaw_081519_masked)
+macaw_053119_PRInorm <- raster::crop(macaw_053119_PRInorm, BND)
+macaw_062819_PRInorm <- raster::crop(macaw_062819_PRInorm, BND)
+macaw_080219_PRInorm <- raster::crop(macaw_080219_PRInorm, BND)
+macaw_081519_PRInorm <- raster::crop(macaw_081519_PRInorm, BND)
+
+#output
+writeRaster(macaw_053119_PRInorm, file.path(path_output, "macaw_053119_PRInorm.tif"), overwrite = TRUE)
+writeRaster(macaw_062819_PRInorm, file.path(path_output, "macaw_062819_PRInorm.tif"), overwrite = TRUE)
+writeRaster(macaw_080219_PRInorm, file.path(path_output, "macaw_080219_PRInorm.tif"), overwrite = TRUE)
+writeRaster(macaw_081519_PRInorm, file.path(path_output, "macaw_081519_PRInorm.tif"), overwrite = TRUE)
+
+#writeRaster(map_rf_swp1_r_080219_masked, file.path(path_output,"map_rf_swp1_r_080219_masked.tif"))
+
+```
+
 #Use the row average extracted from MACAW
 ##Read row average
 ```{r}
@@ -2852,17 +3049,291 @@ rowmean_macaw_3ft <- read.csv(file.path(path_df, "rowmean_macaw_3ft.csv"))
 View(rowmean_macaw)
 names(rowmean_macaw)
 
+names(rowmean_macaw_1ft)
+
 ```
 ##calculate indices
 ```{r}
+#rowmean_macaw
+rowmean_macaw[,2:13] <- rowmean_macaw[,2:13]/65535
+rowmean_macaw$ndvi <- NDVI(rowmean_macaw)
+rowmean_macaw$pri <- PRI(rowmean_macaw)
+rowmean_macaw$wi <- WI(rowmean_macaw)
+rowmean_macaw$wi.ndvi <- WI.NDVI(rowmean_macaw)
+rowmean_macaw$mcawi <- MCARI(rowmean_macaw)
+rowmean_macaw$tcari.osavi <- TCARI.OSAVI(rowmean_macaw)
+rowmean_macaw$tcari <- TCARI(rowmean_macaw)
+rowmean_macaw$pri550 <- PRI550(rowmean_macaw)
+rowmean_macaw$prinorm <- PRInorm(rowmean_macaw)
+rowmean_macaw$prinorm550 <- PRInorm550(rowmean_macaw)
+rowmean_macaw$rer <- RER(rowmean_macaw)
+rowmean_macaw$rdvi <- RDVI(rowmean_macaw)
+
+#rowmean_macaw_1ft
+rowmean_macaw_1ft[,2:13] <- rowmean_macaw_1ft[,2:13]/65535
+rowmean_macaw_1ft$ndvi <- NDVI(rowmean_macaw_1ft)
+rowmean_macaw_1ft$pri <- PRI(rowmean_macaw_1ft)
+rowmean_macaw_1ft$wi <- WI(rowmean_macaw_1ft)
+rowmean_macaw_1ft$wi.ndvi <- WI.NDVI(rowmean_macaw_1ft)
+rowmean_macaw_1ft$mcawi <- MCARI(rowmean_macaw_1ft)
+rowmean_macaw_1ft$tcari.osavi <- TCARI.OSAVI(rowmean_macaw_1ft)
+rowmean_macaw_1ft$tcari <- TCARI(rowmean_macaw_1ft)
+rowmean_macaw_1ft$pri550 <- PRI550(rowmean_macaw_1ft)
+rowmean_macaw_1ft$prinorm <- PRInorm(rowmean_macaw_1ft)
+rowmean_macaw_1ft$prinorm550 <- PRInorm550(rowmean_macaw_1ft)
+rowmean_macaw_1ft$rer <- RER(rowmean_macaw_1ft)
+rowmean_macaw_1ft$rdvi <- RDVI(rowmean_macaw_1ft)
+
+
+#rowmean_macaw_2ft
+rowmean_macaw_2ft[,2:13] <- rowmean_macaw_2ft[,2:13]/65535
+rowmean_macaw_2ft$ndvi <- NDVI(rowmean_macaw_2ft)
+rowmean_macaw_2ft$pri <- PRI(rowmean_macaw_2ft)
+rowmean_macaw_2ft$wi <- WI(rowmean_macaw_2ft)
+rowmean_macaw_2ft$wi.ndvi <- WI.NDVI(rowmean_macaw_2ft)
+rowmean_macaw_2ft$mcawi <- MCARI(rowmean_macaw_2ft)
+rowmean_macaw_2ft$tcari.osavi <- TCARI.OSAVI(rowmean_macaw_2ft)
+rowmean_macaw_2ft$tcari <- TCARI(rowmean_macaw_2ft)
+rowmean_macaw_2ft$pri550 <- PRI550(rowmean_macaw_2ft)
+rowmean_macaw_2ft$prinorm <- PRInorm(rowmean_macaw_2ft)
+rowmean_macaw_2ft$prinorm550 <- PRInorm550(rowmean_macaw_2ft)
+rowmean_macaw_2ft$rer <- RER(rowmean_macaw_2ft)
+rowmean_macaw_2ft$rdvi <- RDVI(rowmean_macaw_2ft)
+
+#rowmean_macaw_3ft
+rowmean_macaw_3ft[,2:13] <- rowmean_macaw_3ft[,2:13]/65535
+rowmean_macaw_3ft$ndvi <- NDVI(rowmean_macaw_3ft)
+rowmean_macaw_3ft$pri <- PRI(rowmean_macaw_3ft)
+rowmean_macaw_3ft$wi <- WI(rowmean_macaw_3ft)
+rowmean_macaw_3ft$wi.ndvi <- WI.NDVI(rowmean_macaw_3ft)
+rowmean_macaw_3ft$mcawi <- MCARI(rowmean_macaw_3ft)
+rowmean_macaw_3ft$tcari.osavi <- TCARI.OSAVI(rowmean_macaw_3ft)
+rowmean_macaw_3ft$tcari <- TCARI(rowmean_macaw_3ft)
+rowmean_macaw_3ft$pri550 <- PRI550(rowmean_macaw_3ft)
+rowmean_macaw_3ft$prinorm <- PRInorm(rowmean_macaw_3ft)
+rowmean_macaw_3ft$prinorm550 <- PRInorm550(rowmean_macaw_3ft)
+rowmean_macaw_3ft$rer <- RER(rowmean_macaw_3ft)
+rowmean_macaw_3ft$rdvi <- RDVI(rowmean_macaw_3ft)
+
+#remove 0822 
+rowmean_macaw <- subset(rowmean_macaw, Date!="2019-08-22")
+rowmean_macaw_1ft <- subset(rowmean_macaw_1ft, Date!="2019-08-22")
+rowmean_macaw_2ft <- subset(rowmean_macaw_2ft, Date!="2019-08-22")
+rowmean_macaw_3ft <- subset(rowmean_macaw_3ft, Date!="2019-08-22")
 
 ```
-
-##Exploratory Plot
+##Convert Treatment to D, DD, WW
 ```{r}
-ggplot(rowmean_macaw, aes(x = Date, y =  ))
+#rowmean_macaw$DW <- rowmean_macaw$Treatment
 ```
 
+##Subset Treatment
+```{r}
+rowmean_macaw_sb <- subset(rowmean_macaw, Treatment %in% c("CONTROL DDD","CONTROL WW","BAYER 16 (SOIL) WW") & Block != "CHBIO")
+rowmean_macaw_1ft_sb <- subset(rowmean_macaw_1ft, Treatment %in% c("CONTROL DDD","CONTROL WW","BAYER 16 (SOIL) WW") & Block != "CHBIO")
+rowmean_macaw_2ft_sb <- subset(rowmean_macaw_2ft, Treatment %in% c("CONTROL DDD","CONTROL WW","BAYER 16 (SOIL) WW") & Block != "CHBIO")
+rowmean_macaw_3ft_sb <- subset(rowmean_macaw_3ft, Treatment %in% c("CONTROL DDD","CONTROL WW","BAYER 16 (SOIL) WW") & Block != "CHBIO")
+
+#change the order of the treatment
+rowmean_macaw_sb$Treatment <- factor(rowmean_macaw_sb$Treatment, levels = c("BAYER 16 (SOIL) WW", "CONTROL WW", "CONTROL DDD"), order = TRUE)
+rowmean_macaw_1ft_sb$Treatment <- factor(rowmean_macaw_1ft_sb$Treatment, levels = c("BAYER 16 (SOIL) WW", "CONTROL WW", "CONTROL DDD"), order = TRUE)
+rowmean_macaw_2ft_sb$Treatment <- factor(rowmean_macaw_2ft_sb$Treatment, levels = c("BAYER 16 (SOIL) WW", "CONTROL WW", "CONTROL DDD"), order = TRUE)
+rowmean_macaw_3ft_sb$Treatment <- factor(rowmean_macaw_3ft_sb$Treatment, levels = c("BAYER 16 (SOIL) WW", "CONTROL WW", "CONTROL DDD"), order = TRUE)
+
+
+dim(rowmean_macaw_sb)  #45,31
+
+```
+
+##Boxplot change over time
+###flagmean_macaw with new corrected shapefile
+```{r}
+#change orders of the 
+flagmean_macaw$Treatment <- factor(flagmean_macaw$Treatment, levels = c("BAYER 16 (SOIL) WW", "CONTROL WW", "CONTROL DDD"), order = TRUE)
+
+
+#dotplot 
+ggplot(subset(flagmean_macaw,Date!="2019-05-31"), aes(x = Date, y =  pri, fill=Treatment))+ geom_dotplot(binaxis = 'y', stackdir = 'center', position = position_dodge(0.75))
+ggplot(subset(flagmean_macaw, Date == "2019-08-15"), aes(x = as.factor(Row), y  = pri, color = Treatment)) + geom_point()+theme_bw()+scale_color_tableau() + xlab("Row") + ylab("PRI")
+ggplot(subset(rowmean_macaw_sb, Date == "2019-08-15"), aes(x = as.factor(Row), y  = pri, color = Treatment)) + geom_point()+theme_bw()+scale_color_tableau() + xlab("Row") + ylab("PRI")
+ggplot(subset(rowmean_macaw_sb, Date == "2019-08-15"), aes(x = Date, y  = pri, color = Treatment)) + geom_boxplot()+theme_bw()+scale_color_tableau() + xlab("Row") + ylab("PRI")
+ggplot(subset(rowmean_macaw_sb, Date == "2019-08-15"), aes(x = Date, y  = ndvi, color = Treatment)) + geom_boxplot()+theme_bw()+scale_color_tableau() + xlab("Row") + ylab("NDVI")
+
+
+#boxplot
+ggplot(flagmean_macaw, aes(x = Date, y =  pri, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI") + scale_fill_tableau() + ggtitle("PRI Plant Average")
+ggplot(flagmean_macaw, aes(x = Date, y =  ndvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NDVI") + scale_fill_tableau() + ggtitle("NDVI Plant Average")
+ggplot(flagmean_macaw, aes(x = Date, y =  wi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("WI") + scale_fill_tableau() + ggtitle("WI Plant Average")
+ggplot(flagmean_macaw, aes(x = Date, y =  wi.ndvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("WI/NDVI") + scale_fill_tableau() + ggtitle("WI/NDVI Plant Average")
+ggplot(flagmean_macaw, aes(x = Date, y =  tcari.osavi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("TCARI/OSAVI") + scale_fill_tableau() + ggtitle("TCARI/OSAVI Plant Average")
+ggplot(flagmean_macaw, aes(x = Date, y =  tcari, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("TCARI") + scale_fill_tableau() + ggtitle("TCARI Plant Average")
+ggplot(flagmean_macaw, aes(x = Date, y =  prinorm, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInorm") + scale_fill_tableau() + ggtitle("PRInorm Plant Average")  #this looks the best so far 
+ggplot(flagmean_macaw, aes(x = Date, y =  pri550, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI550") + scale_fill_tableau() + ggtitle("PRI550 Plant Average")  
+ggplot(flagmean_macaw, aes(x = Date, y =  prinorm550, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInorm550") + scale_fill_tableau() + ggtitle("PRInorm550 Plant Average")  
+ggplot(flagmean_macaw, aes(x = Date, y =  rer, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RER") + scale_fill_tableau() + ggtitle("RER Plant Average")  
+ggplot(flagmean_macaw, aes(x = Date, y =  rdvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RDVI") + scale_fill_tableau() + ggtitle("RDVI Plant Average")  
+ggplot(flagmean_macaw, aes(x = Date, y =  pri/ndvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI/NDVI") + scale_fill_tableau() + ggtitle("PRI/NDVI Plant Average")  
+ggplot(flagmean_macaw, aes(x = Date, y =  pri/rdvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI/RDVI") + scale_fill_tableau() + ggtitle("PRI/RDVI Plant Average")  
+ggplot(flagmean_macaw, aes(x = Date, y =  pri/ndvi/tcari.osavi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI/NDVI/TCARI.OSAVI") + scale_fill_tableau() + ggtitle("PRI/NDVI/TCARI.OSAVI Plant Average")  
+
+#all the band
+ggplot(flagmean_macaw, aes(x = Date, y =  X970, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 970") + scale_fill_tableau() + ggtitle("Band 970 Plant Average")  
+ggplot(flagmean_macaw, aes(x = Date, y =  X900, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 900") + scale_fill_tableau() + ggtitle("Band 900 Plant Average")  
+ggplot(flagmean_macaw, aes(x = Date, y =  X740, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 740") + scale_fill_tableau() + ggtitle("Band 740 Plant Average")  
+ggplot(flagmean_macaw, aes(x = Date, y =  X720, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 720") + scale_fill_tableau() + ggtitle("Band 720 Plant Average")  
+ggplot(flagmean_macaw, aes(x = Date, y =  X700, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 700") + scale_fill_tableau() + ggtitle("Band 700 Plant Average")  
+ggplot(flagmean_macaw, aes(x = Date, y =  X670, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 670") + scale_fill_tableau() + ggtitle("Band 670 Plant Average")  
+ggplot(flagmean_macaw, aes(x = Date, y =  X570, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 570") + scale_fill_tableau() + ggtitle("Band 570 Plant Average")  
+ggplot(flagmean_macaw, aes(x = Date, y =  X550, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 550") + scale_fill_tableau() + ggtitle("Band 550 Plant Average")  
+ggplot(flagmean_macaw, aes(x = Date, y =  X530, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 530") + scale_fill_tableau() + ggtitle("Band 530 Plant Average")  
+ggplot(flagmean_macaw, aes(x = Date, y =  X480, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 480") + scale_fill_tableau() + ggtitle("Band 480 Plant Average")  
+ggplot(flagmean_macaw, aes(x = Date, y =  X450, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 450") + scale_fill_tableau() + ggtitle("Band 450 Plant Average")  
+ggplot(flagmean_macaw, aes(x = Date, y =  X800, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 800") + scale_fill_tableau() + ggtitle("Band 800 Plant Average")  
+
+```
+
+###rowmean_macaw
+```{r}
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  pri, fill=Treatment))+ geom_dotplot(binaxis = 'y', stackdir = 'center', position = position_dodge(0.6))
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  prinorm, fill=Treatment))+ geom_dotplot(binaxis = 'y', stackdir = 'center', position = position_dodge(0.6))
+
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  ndvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NDVI") + scale_fill_tableau() + ggtitle("NDVI Row Average")
+
+#how the indices change over time
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  pri, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI") + scale_fill_tableau() + ggtitle("PRI Row Average")
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  ndvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NDVI") + scale_fill_tableau() + ggtitle("NDVI Row Average")
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  wi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("WI") + scale_fill_tableau() + ggtitle("WI Row Average")
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  wi.ndvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("WI/NDVI") + scale_fill_tableau() + ggtitle("WI/NDVI Row Average")
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  tcari.osavi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("TCARI/OSAVI") + scale_fill_tableau() + ggtitle("TCARI/OSAVI Row Average")
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  tcari, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("TCARI") + scale_fill_tableau() + ggtitle("TCARI Row Average")
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  prinorm, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInorm") + scale_fill_tableau() + ggtitle("PRInorm Row Average")  #this looks the best so far 
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  pri550, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI550") + scale_fill_tableau() + ggtitle("PRI550 Row Average")  
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  prinorm550, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInorm550") + scale_fill_tableau() + ggtitle("PRInorm550 Row Average")  
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  rer, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RER") + scale_fill_tableau() + ggtitle("RER Row Average")  
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  rdvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RDVI") + scale_fill_tableau() + ggtitle("RDVI Row Average")  
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  pri/ndvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI/NDVI") + scale_fill_tableau() + ggtitle("PRI/NDVI Row Average")  
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  pri/rdvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI/RDVI") + scale_fill_tableau() + ggtitle("PRI/RDVI Row Average")  
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  pri/ndvi/tcari.osavi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI/NDVI/TCARI.OSAVI") + scale_fill_tableau() + ggtitle("PRI/NDVI/TCARI.OSAVI Row Average")  
+
+#all the band
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  X970, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 970") + scale_fill_tableau() + ggtitle("Band 970 Row Average")  
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  X900, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 900") + scale_fill_tableau() + ggtitle("Band 900 Row Average")  
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  X740, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 740") + scale_fill_tableau() + ggtitle("Band 740 Row Average")  
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  X720, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 720") + scale_fill_tableau() + ggtitle("Band 720 Row Average")  
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  X700, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 700") + scale_fill_tableau() + ggtitle("Band 700 Row Average")  
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  X670, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 670") + scale_fill_tableau() + ggtitle("Band 670 Row Average")  
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  X570, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 570") + scale_fill_tableau() + ggtitle("Band 570 Row Average")  
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  X550, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 550") + scale_fill_tableau() + ggtitle("Band 550 Row Average")  
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  X530, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 530") + scale_fill_tableau() + ggtitle("Band 530 Row Average")  
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  X480, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 480") + scale_fill_tableau() + ggtitle("Band 480 Row Average")  
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  X450, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 450") + scale_fill_tableau() + ggtitle("Band 450 Row Average")  
+ggplot(rowmean_macaw_sb, aes(x = Date, y =  X800, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 800") + scale_fill_tableau() + ggtitle("Band 800 Row Average")  
+
+
+
+
+#ggplot(flagmean_macaw_exgexrmask_phys, aes(x = as.factor(Date), y = wi, fill = Treatment2)) + geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("WI") + scale_fill_tableau() + ggtitle("WI")
+
+```
+###rowmean_macaw_1ft
+```{r}
+#how the indices change over time
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  pri, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI") + scale_fill_tableau() + ggtitle("PRI 1ft Row Average")
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  ndvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NDVI") + scale_fill_tableau() + ggtitle("NDVI 1ft Row Average")
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  wi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("WI") + scale_fill_tableau() + ggtitle("WI 1ft Row Average")
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  wi.ndvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("WI/NDVI") + scale_fill_tableau() + ggtitle("WI/NDVI 1ft Row Average")
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  tcari.osavi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("TCARI/OSAVI") + scale_fill_tableau() + ggtitle("TCARI/OSAVI 1ft Row Average")
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  tcari, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("TCARI") + scale_fill_tableau() + ggtitle("TCARI 1ft Row Average")
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  prinorm, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInorm") + scale_fill_tableau() + ggtitle("PRInorm 1ft Row Average")  #this looks the best so far 
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  pri550, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI550") + scale_fill_tableau() + ggtitle("PRI550 1ft Row Average")  
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  prinorm550, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInorm550") + scale_fill_tableau() + ggtitle("PRInorm550 1ft Row Average")  
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  rer, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RER") + scale_fill_tableau() + ggtitle("RER 1ft Row Average")  
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  rdvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RDVI") + scale_fill_tableau() + ggtitle("RDVI 1ft Row Average")  
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  pri/ndvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI/NDVI") + scale_fill_tableau() + ggtitle("PRI/NDVI 1ft Row Average")  
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  pri/rdvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI/RDVI") + scale_fill_tableau() + ggtitle("PRI/RDVI 1ft Row Average")  
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  pri/ndvi/tcari.osavi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI/NDVI/TCARI.OSAVI") + scale_fill_tableau() + ggtitle("PRI/NDVI/TCARI.OSAVI 1ft Row Average")  
+
+#all the band
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  X970, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 970") + scale_fill_tableau() + ggtitle("Band 970 1ft Row Average")  
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  X900, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 900") + scale_fill_tableau() + ggtitle("Band 900 1ft Row Average")  
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  X740, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 740") + scale_fill_tableau() + ggtitle("Band 740 1ft Row Average")  
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  X720, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 720") + scale_fill_tableau() + ggtitle("Band 720 1ft Row Average")  
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  X700, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 700") + scale_fill_tableau() + ggtitle("Band 700 1ft Row Average")  
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  X670, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 670") + scale_fill_tableau() + ggtitle("Band 670 1ft Row Average")  
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  X570, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 570") + scale_fill_tableau() + ggtitle("Band 570 1ft Row Average")  
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  X550, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 550") + scale_fill_tableau() + ggtitle("Band 550 1ft Row Average")  
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  X530, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 530") + scale_fill_tableau() + ggtitle("Band 530 1ft Row Average")  
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  X480, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 480") + scale_fill_tableau() + ggtitle("Band 480 1ft Row Average")  
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  X450, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 450") + scale_fill_tableau() + ggtitle("Band 450 1ft Row Average")  
+ggplot(rowmean_macaw_1ft_sb, aes(x = Date, y =  X800, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 800") + scale_fill_tableau() + ggtitle("Band 800 1ft Row Average")  
+
+```
+###rowmean_macaw_2ft
+```{r}
+#how the indices change over time
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  pri, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI") + scale_fill_tableau() + ggtitle("PRI 2ft Row Average")
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  ndvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NDVI") + scale_fill_tableau() + ggtitle("NDVI 2ft Row Average")
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  wi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("WI") + scale_fill_tableau() + ggtitle("WI 2ft Row Average")
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  wi.ndvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("WI/NDVI") + scale_fill_tableau() + ggtitle("WI/NDVI 2ft Row Average")
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  tcari.osavi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("TCARI/OSAVI") + scale_fill_tableau() + ggtitle("TCARI/OSAVI 2ft Row Average")
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  tcari, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("TCARI") + scale_fill_tableau() + ggtitle("TCARI 2ft Row Average")
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  prinorm, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInorm") + scale_fill_tableau() + ggtitle("PRInorm 2ft Row Average")  #this looks the best so far 
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  pri550, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI550") + scale_fill_tableau() + ggtitle("PRI550 2ft Row Average")  
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  prinorm550, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInorm550") + scale_fill_tableau() + ggtitle("PRInorm550 2ft Row Average")  
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  rer, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RER") + scale_fill_tableau() + ggtitle("RER 2ft Row Average")  
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  rdvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RDVI") + scale_fill_tableau() + ggtitle("RDVI 2ft Row Average")  
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  pri/ndvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI/NDVI") + scale_fill_tableau() + ggtitle("PRI/NDVI 2ft Row Average")  
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  pri/rdvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI/RDVI") + scale_fill_tableau() + ggtitle("PRI/RDVI 2ft Row Average")  
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  pri/ndvi/tcari.osavi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI/NDVI/TCARI.OSAVI") + scale_fill_tableau() + ggtitle("PRI/NDVI/TCARI.OSAVI 2ft Row Average")  
+
+#all the band
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  X970, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 970") + scale_fill_tableau() + ggtitle("Band 970 2ft Row Average")  
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  X900, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 900") + scale_fill_tableau() + ggtitle("Band 900 2ft Row Average")  
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  X740, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 740") + scale_fill_tableau() + ggtitle("Band 740 2ft Row Average")  
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  X720, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 720") + scale_fill_tableau() + ggtitle("Band 720 2ft Row Average")  
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  X700, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 700") + scale_fill_tableau() + ggtitle("Band 700 2ft Row Average")  
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  X670, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 670") + scale_fill_tableau() + ggtitle("Band 670 2ft Row Average")  
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  X570, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 570") + scale_fill_tableau() + ggtitle("Band 570 2ft Row Average")  
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  X550, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 550") + scale_fill_tableau() + ggtitle("Band 550 2ft Row Average")  
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  X530, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 530") + scale_fill_tableau() + ggtitle("Band 530 2ft Row Average")  
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  X480, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 480") + scale_fill_tableau() + ggtitle("Band 480 2ft Row Average")  
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  X450, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 450") + scale_fill_tableau() + ggtitle("Band 450 2ft Row Average")  
+ggplot(rowmean_macaw_2ft_sb, aes(x = Date, y =  X800, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 800") + scale_fill_tableau() + ggtitle("Band 800 2ft Row Average")  
+
+```
+###rowmean_macaw_3ft
+```{r}
+#how the indices change over time
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  pri, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI") + scale_fill_tableau() + ggtitle("PRI 3ft Row Average")
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  ndvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NDVI") + scale_fill_tableau() + ggtitle("NDVI 3ft Row Average")
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  wi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("WI") + scale_fill_tableau() + ggtitle("WI 3ft Row Average")
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  wi.ndvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("WI/NDVI") + scale_fill_tableau() + ggtitle("WI/NDVI 3ft Row Average")
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  tcari.osavi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("TCARI/OSAVI") + scale_fill_tableau() + ggtitle("TCARI/OSAVI 3ft Row Average")
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  tcari, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("TCARI") + scale_fill_tableau() + ggtitle("TCARI 3ft Row Average")
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  prinorm, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInorm") + scale_fill_tableau() + ggtitle("PRInorm 3ft Row Average")  #this looks the best so far 
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  pri550, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI550") + scale_fill_tableau() + ggtitle("PRI550 3ft Row Average")  
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  prinorm550, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInorm550") + scale_fill_tableau() + ggtitle("PRInorm550 3ft Row Average")  
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  rer, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RER") + scale_fill_tableau() + ggtitle("RER 3ft Row Average")  
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  rdvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RDVI") + scale_fill_tableau() + ggtitle("RDVI 3ft Row Average")  
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  pri/ndvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI/NDVI") + scale_fill_tableau() + ggtitle("PRI/NDVI 3ft Row Average")  
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  pri/rdvi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI/RDVI") + scale_fill_tableau() + ggtitle("PRI/RDVI 3ft Row Average")  
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  pri/ndvi/tcari.osavi, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI/NDVI/TCARI.OSAVI") + scale_fill_tableau() + ggtitle("PRI/NDVI/TCARI.OSAVI 3ft Row Average")  
+
+#all the band
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  X970, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 970") + scale_fill_tableau() + ggtitle("Band 970 3ft Row Average")  
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  X900, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 900") + scale_fill_tableau() + ggtitle("Band 900 3ft Row Average")  
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  X740, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 740") + scale_fill_tableau() + ggtitle("Band 740 3ft Row Average")  
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  X720, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 720") + scale_fill_tableau() + ggtitle("Band 720 3ft Row Average")  
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  X700, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 700") + scale_fill_tableau() + ggtitle("Band 700 3ft Row Average")  
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  X670, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 670") + scale_fill_tableau() + ggtitle("Band 670 3ft Row Average")  
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  X570, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 570") + scale_fill_tableau() + ggtitle("Band 570 3ft Row Average")  
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  X550, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 550") + scale_fill_tableau() + ggtitle("Band 550 3ft Row Average")  
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  X530, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 530") + scale_fill_tableau() + ggtitle("Band 530 3ft Row Average")  
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  X480, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 480") + scale_fill_tableau() + ggtitle("Band 480 3ft Row Average")  
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  X450, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 450") + scale_fill_tableau() + ggtitle("Band 450 3ft Row Average")  
+ggplot(rowmean_macaw_3ft_sb, aes(x = Date, y =  X800, fill=Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("Band 800") + scale_fill_tableau() + ggtitle("Band 800 3ft Row Average")  
+
+```
 ##Combine with SWP
 ```{r}
 rowmean_macaw_swp <- base::merge(rowmean_macaw, rowflagmean_swp, by = c("Block","Treatment","Date"))
@@ -2870,7 +3341,1406 @@ rowmean_macaw_swp <- base::merge(rowmean_macaw, rowflagmean_swp, by = c("Block",
 names(rowflagmean_swp)
 names(rowmean_macaw) 
 ```
+#--------------------------------------------------
+#Get rid of the Control WW group
+##Flagmean 
+###SWP
+```{r}
+names(flagmean_macaw)
 
+unique(swp_PL$Block)
+unique(flagmean_macaw$Block)
+unique(swp_PL$Treatment)
+unique(flagmean_macaw$Treatment)
+unique(flagmean_macaw$Date)
+unique(swp_PL$Date)
+flagmean_macaw_swp <- base::merge(flagmean_macaw, swp_PL, by = c("Block","Treatment","Plant","Date"))
+dim(flagmean_macaw_swp)  #330, 35
+dim(flagmean_macaw)  #360, 33
+dim(swp_PL)  #1070, 6
+dim(subset(swp_PL, Date=="2019-06-28")) #120,6
+dim(subset(swp_PL, Date=="2019-08-02")) #160,6
+dim(subset(swp_PL, Date=="2019-08-15")) #150,6
+
+names(flagmean_macaw_swp)
+
+flagmean_macaw_swp$Treatment2 = flagmean_macaw_swp$Treatment
+for(i in 1:nrow(flagmean_macaw_swp)){
+  if(flagmean_macaw_swp[i,]$Treatment2 == "CONTROL DDD"){
+    flagmean_macaw_swp[i,]$Treatment2 = "35% ET"
+  }
+  if(flagmean_macaw_swp[i,]$Treatment2 == "CONTROL WW"){
+    flagmean_macaw_swp[i,]$Treatment2 = "70% ET"
+  }
+  if(flagmean_macaw_swp[i,]$Treatment2 == "BAYER 16 (SOIL) WW"){
+    flagmean_macaw_swp[i,]$Treatment2 = "100% ET"
+  }
+}
+
+#get rid of control ww group 
+flagmean_macaw_swp_sb <- subset(flagmean_macaw_swp, Treatment != "CONTROL WW")
+#flagmean_macaw_swp_sb$Treatment2 <- flagmean_macaw_swp_sb$Treatment
+#flagmean_macaw_swp_sb$Treatment2
+
+ggplot(subset(flagmean_macaw_swp, Treatment != "CONTROL WW" & Date == "2019-08-15"), aes(x = pri, y = -SWP, col = as.factor(Treatment))) + geom_point() #+ facet_wrap(~Date, nrow = 3, scales  = "free")
+```
+####Plots
+```{r}
+#Two Treatments
+#PRI boxplot
+##PRI per plant
+ggplot(flagmean_macaw_swp_sb, aes(x = as.factor(Date), y = pri, fill = Treatment2))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI") + scale_fill_tableau() + ggtitle("PRI Per Plant") 
+##PRInorm per plant
+ggplot(flagmean_macaw_swp_sb, aes(x = as.factor(Date), y = prinorm, fill = Treatment2))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInorm") + scale_fill_tableau() + ggtitle("PRInorm Per Plant") 
+#SWP boxplot
+ggplot(flagmean_macaw_swp_sb, aes(x = as.factor(Date), y = -SWP, fill = Treatment2))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("SWP (Bars)") + scale_fill_tableau() + ggtitle("SWP Per Plant") 
+#PRI vs SWP
+ggplot(flagmean_macaw_swp_sb, aes(x = prinorm, y = -SWP)) + geom_point(aes(shape = as.factor(Date))) + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab("SWP (Bars)")  + ggtitle("SWP vs PRInorm") + geom_smooth(method = "lm", se = FALSE)+ scale_shape_discrete(name = "Date") #+ theme(legend.title = element_text("Date"))# + facet_wrap(~Date, nrow = 3, scales = "free")
+ggplot(flagmean_macaw_swp_sb, aes(x = pri, y = -SWP)) + geom_point(aes(shape = as.factor(Date))) + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab("SWP (Bars)") + scale_fill_tableau() + ggtitle("SWP vs PRI") + geom_smooth(method = "lm", se = FALSE)+ scale_shape_discrete(name = "Date") #+ theme(legend.title = element_text("Date"))# + facet_wrap(~Date, nrow = 3, scales = "free")
+ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-08-15"), aes(x = pri, y = -SWP)) + geom_point(aes(shape = as.factor(Date))) + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab("SWP (Bars)") + scale_fill_tableau() + ggtitle("SWP vs PRI") + geom_smooth(method = "lm", se = FALSE)+ labs(fill = "Date") #+ theme(legend.title = element_text("Date"))# + facet_wrap(~Date, nrow = 3, scales = "free")
+
+
+
+#Three Treatments
+#PRI boxplot
+##PRI per plant
+ggplot(flagmean_macaw_swp, aes(x = as.factor(Date), y = pri, fill = Treatment2))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI") + scale_fill_tableau() + ggtitle("PRI Per Plant") 
+##PRInorm per plant
+ggplot(flagmean_macaw_swp, aes(x = as.factor(Date), y = prinorm, fill = Treatment2))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInorm") + scale_fill_tableau() + ggtitle("PRInorm Per Plant") 
+#SWP boxplot
+ggplot(flagmean_macaw_swp, aes(x = as.factor(Date), y = -SWP, fill = Treatment2))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("SWP (Bars)") + scale_fill_tableau() + ggtitle("SWP Per Plant") 
+#PRI vs SWP
+ggplot(flagmean_macaw_swp, aes(x = prinorm, y = -SWP)) + geom_point(aes(shape = as.factor(Date))) + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab("SWP (Bars)")  + ggtitle("SWP vs PRInorm") + geom_smooth(method = "lm", se = FALSE)+ scale_shape_discrete(name = "Date") #+ theme(legend.title = element_text("Date"))# + facet_wrap(~Date, nrow = 3, scales = "free")
+ggplot(flagmean_macaw_swp, aes(x = pri, y = -SWP)) + geom_point(aes(shape = as.factor(Date))) + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab("SWP (Bars)") + scale_fill_tableau() + ggtitle("SWP vs PRI") + geom_smooth(method = "lm", se = FALSE)+ scale_shape_discrete(name = "Date") #+ theme(legend.title = element_text("Date"))# + facet_wrap(~Date, nrow = 3, scales = "free")
+ggplot(subset(flagmean_macaw_swp, Date == "2019-08-15"), aes(x = pri, y = -SWP)) + geom_point(aes(shape = as.factor(Date))) + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab("SWP (Bars)") + scale_fill_tableau() + ggtitle("SWP vs PRI") + geom_smooth(method = "lm", se = FALSE)+ labs(fill = "Date") #+ theme(legend.title = element_text("Date"))# + facet_wrap(~Date, nrow = 3, scales = "free")
+
+
+
+##PRInorm
+p1 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-06-28"), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-08-02"), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-08-15"), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(flagmean_macaw_swp_sb), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+##PRI
+p1 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-06-28"), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-08-02"), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-08-15"), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(flagmean_macaw_swp_sb), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+##NDVI
+p1 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-06-28"), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-08-02"), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-08-15"), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(flagmean_macaw_swp_sb), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+##RDVI
+p1 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-06-28"), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-08-02"), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-08-15"), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(flagmean_macaw_swp_sb), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+##RER
+p1 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-06-28"), aes(x = rer, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RER") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-08-02"), aes(x = rer, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RER") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-08-15"), aes(x = rer, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RER") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(flagmean_macaw_swp_sb), aes(x = rer, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RER") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+#TCARI
+p1 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-06-28"), aes(x = tcari, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("TCARI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-08-02"), aes(x = tcari, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("TCARI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-08-15"), aes(x = tcari, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("TCARI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(flagmean_macaw_swp_sb), aes(x = tcari, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("TCARI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+#WI
+p1 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-06-28"), aes(x = wi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("WI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-08-02"), aes(x = wi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("WI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(flagmean_macaw_swp_sb, Date == "2019-08-15"), aes(x = wi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("WI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(flagmean_macaw_swp_sb), aes(x = wi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("WI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+
+
+ggplot(subset(flagmean_macaw_swp_sb), aes(x = rdvi, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE) + labs(color = "Date") #+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggplot(subset(flagmean_macaw_swp_sb), aes(x = ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE) + labs(color = "Date")#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+
+```
+####Quantitative analysis
+#####t-test
+```{r}
+#three treatments 
+lm6 <- lm(SWP~Treatment, data = subset(flagmean_macaw_swp, Date == "2019-06-28")) 
+lm6
+hsd1 <- HSD.test(lm6, "Treatment", group = TRUE)
+hsd1
+
+lm7 <- lm(SWP~Treatment, data = subset(flagmean_macaw_swp, Date == "2019-08-02")) 
+lm7
+hsd2 <- HSD.test(lm7, "Treatment", group = TRUE)
+hsd2
+
+lm8 <- lm(SWP~Treatment, data = subset(flagmean_macaw_swp, Date == "2019-08-15")) 
+lm8
+hsd3 <- HSD.test(lm8, "Treatment", group = TRUE)
+hsd3
+
+#two treatments
+lm6 <- lm(SWP~Treatment, data = subset(flagmean_macaw_swp_sb, Date == "2019-06-28")) 
+lm6
+hsd1 <- HSD.test(lm6, "Treatment", group = TRUE)
+hsd1
+
+lm7 <- lm(SWP~Treatment, data = subset(flagmean_macaw_swp_sb, Date == "2019-08-02")) 
+lm7
+hsd2 <- HSD.test(lm7, "Treatment", group = TRUE)
+hsd2
+
+lm8 <- lm(SWP~Treatment, data = subset(flagmean_macaw_swp_sb, Date == "2019-08-15")) 
+lm8
+hsd3 <- HSD.test(lm8, "Treatment", group = TRUE)
+hsd3
+
+```
+#####Correlations and linear 
+######Two treatments
+```{r}
+dim(flagmean_macaw_swp_sb) #220,36
+dim(subset(flagmean_macaw_swp_sb, Date=="2019-06-28")) #80,36
+dim(subset(flagmean_macaw_swp_sb, Date=="2019-08-02")) #80,36
+dim(subset(flagmean_macaw_swp_sb, Date=="2019-08-15")) #60,36
+#PRI
+cor(flagmean_macaw_swp_sb$pri, flagmean_macaw_swp_sb$SWP)^2  #0.453
+lm1 <- lm(pri~SWP, data = flagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$pri, subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.0066
+lm2 <- lm(pri~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$pri, subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.0167
+lm3 <- lm(pri~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$pri, subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.3165
+lm4 <- lm(pri~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #***
+
+#ndvi
+cor(flagmean_macaw_swp_sb$ndvi, flagmean_macaw_swp_sb$SWP)^2  #0.304
+lm1 <- lm(ndvi~SWP, data = flagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$ndvi, subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.029
+lm2 <- lm(ndvi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$ndvi, subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.117
+lm3 <- lm(ndvi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #**
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$ndvi, subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.355
+lm4 <- lm(ndvi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #***
+
+#rdvi
+cor(flagmean_macaw_swp_sb$rdvi, flagmean_macaw_swp_sb$SWP)^2  #0.182
+lm1 <- lm(rdvi~SWP, data = flagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$rdvi, subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.038
+lm2 <- lm(rdvi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #.
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$rdvi, subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.165
+lm3 <- lm(rdvi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #***
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$rdvi, subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.4356
+lm4 <- lm(rdvi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #***
+
+#tcari
+cor(flagmean_macaw_swp_sb$tcari, flagmean_macaw_swp_sb$SWP)^2  #0.286
+lm1 <- lm(tcari~SWP, data = flagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$tcari, subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.0156
+lm2 <- lm(tcari~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$tcari, subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.044
+lm3 <- lm(tcari~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #.
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$tcari, subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.0195
+lm4 <- lm(tcari~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #
+
+#rer
+cor(flagmean_macaw_swp_sb$rer, flagmean_macaw_swp_sb$SWP)^2  #0.084
+lm1 <- lm(rer~SWP, data = flagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$rer, subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.0176
+lm2 <- lm(rer~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$rer, subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.0478
+lm3 <- lm(rer~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #.
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$rer, subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.2995
+lm4 <- lm(rer~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #***
+
+#tcari.osavi
+cor(flagmean_macaw_swp_sb$tcari.osavi, flagmean_macaw_swp_sb$SWP)^2  #0.286
+lm1 <- lm(tcari.osavi~SWP, data = flagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$tcari.osavi, subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.001
+lm2 <- lm(tcari.osavi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$tcari.osavi, subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.0019
+lm3 <- lm(tcari.osavi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$tcari.osavi, subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.0421
+lm4 <- lm(tcari.osavi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #
+
+#pri550
+cor(flagmean_macaw_swp_sb$pri550, flagmean_macaw_swp_sb$SWP)^2  #0.0284
+lm1 <- lm(pri550~SWP, data = flagmean_macaw_swp_sb)
+summary(lm1)  #*
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$pri550, subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.000
+lm2 <- lm(pri550~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$pri550, subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.0202
+lm3 <- lm(pri550~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$pri550, subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.012
+lm4 <- lm(pri550~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #
+
+#wi
+cor(flagmean_macaw_swp_sb$wi, flagmean_macaw_swp_sb$SWP)^2  #0.3325
+lm1 <- lm(wi~SWP, data = flagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$wi, subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.052
+lm2 <- lm(wi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #*
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$wi, subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.0071
+lm3 <- lm(wi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$wi, subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.0689
+lm4 <- lm(wi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #*
+
+#wi.ndvi
+cor(flagmean_macaw_swp_sb$wi.ndvi, flagmean_macaw_swp_sb$SWP)^2  #0.121
+lm1 <- lm(wi.ndvi~SWP, data = flagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$wi.ndvi, subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.06
+lm2 <- lm(wi.ndvi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #*
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$wi.ndvi, subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.0466
+lm3 <- lm(wi.ndvi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #.
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$wi.ndvi, subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.118
+lm4 <- lm(wi.ndvi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #**
+
+
+#PRInorm
+cor(flagmean_macaw_swp_sb$prinorm, flagmean_macaw_swp_sb$SWP)^2  #0.402
+lm1 <- lm(prinorm~SWP, data = flagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$prinorm, subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.02297
+lm2 <- lm(prinorm~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$prinorm, subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.0698
+lm3 <- lm(prinorm~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #*
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$prinorm, subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.413
+lm4 <- lm(prinorm~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #***
+
+#PRI/NDVI
+cor(flagmean_macaw_swp_sb$pri/flagmean_macaw_swp_sb$ndvi, flagmean_macaw_swp_sb$SWP)^2  #0.470
+lm1 <- lm(pri/ndvi~SWP, data = flagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$pri/subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$ndvi, subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.008
+lm2 <- lm(pri/ndvi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$pri/subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$ndvi, subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.0279
+lm3 <- lm(pri/ndvi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$pri/subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$ndvi, subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.347
+lm4 <- lm(pri/ndvi~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #***
+
+
+
+#PRI/(ndvi*rer)
+cor(flagmean_macaw_swp_sb$pri/flagmean_macaw_swp_sb$ndvi/flagmean_macaw_swp_sb$rer, flagmean_macaw_swp_sb$SWP)^2  #0.480
+lm1 <- lm(pri/ndvi/rer~SWP, data = flagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$pri/subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$ndvi/subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$rer, subset(flagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.017
+lm2 <- lm(pri/ndvi/rer~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$pri/subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$ndvi/subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$rer, subset(flagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.056
+lm3 <- lm(pri/ndvi/rer~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #*
+cor(subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$pri/subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$ndvi/subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$rer, subset(flagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.386
+lm4 <- lm(pri/ndvi/rer~SWP, data = subset(flagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #***
+
+```
+
+######Three treatments
+```{r}
+#PRI
+cor(flagmean_macaw_swp$pri, flagmean_macaw_swp$SWP)^2  #0.471
+lm1 <- lm(pri~SWP, data = flagmean_macaw_swp)
+summary(lm1)  #***
+cor(subset(flagmean_macaw_swp, Date=="2019-06-28")$pri, subset(flagmean_macaw_swp, Date=="2019-06-28")$SWP)^2  #0.025
+lm2 <- lm(pri~SWP, data = subset(flagmean_macaw_swp, Date=="2019-06-28"))
+summary(lm2)  #.
+cor(subset(flagmean_macaw_swp, Date=="2019-08-02")$pri, subset(flagmean_macaw_swp, Date=="2019-08-02")$SWP)^2  #0.018
+lm3 <- lm(pri~SWP, data = subset(flagmean_macaw_swp, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(flagmean_macaw_swp, Date=="2019-08-15")$pri, subset(flagmean_macaw_swp, Date=="2019-08-15")$SWP)^2  #0.245
+lm4 <- lm(pri~SWP, data = subset(flagmean_macaw_swp, Date=="2019-08-15"))
+summary(lm4)  #***
+
+#NDVI
+cor(flagmean_macaw_swp$ndvi, flagmean_macaw_swp$SWP)^2  #0.338
+lm1 <- lm(ndvi~SWP, data = flagmean_macaw_swp)
+summary(lm1)  #***
+cor(subset(flagmean_macaw_swp, Date=="2019-06-28")$ndvi, subset(flagmean_macaw_swp, Date=="2019-06-28")$SWP)^2  #0.058
+lm2 <- lm(ndvi~SWP, data = subset(flagmean_macaw_swp, Date=="2019-06-28"))
+summary(lm2)  #**
+cor(subset(flagmean_macaw_swp, Date=="2019-08-02")$ndvi, subset(flagmean_macaw_swp, Date=="2019-08-02")$SWP)^2  #0.085
+lm3 <- lm(ndvi~SWP, data = subset(flagmean_macaw_swp, Date=="2019-08-02"))
+summary(lm3)  #**
+cor(subset(flagmean_macaw_swp, Date=="2019-08-15")$ndvi, subset(flagmean_macaw_swp, Date=="2019-08-15")$SWP)^2  #0.342
+lm4 <- lm(ndvi~SWP, data = subset(flagmean_macaw_swp, Date=="2019-08-15"))
+summary(lm4)  #***
+
+
+```
+
+```{r}
+#cor(rowflagmean_macaw_phys$pri, rowflagmean_macaw_phys$SWP)^2  #0.376
+#lm1 <- lm(pri~SWP, data = rowflagmean_macaw_phys)
+#summary(lm1)
+#ggplot(rowflagmean_macaw_phys, aes(x = pri, y = -SWP)) + geom_point(aes(color = as.factor(Date))) + xlab("Photochemical Reflectance Index (PRI)") + ylab("SWP (Bars)") + geom_smooth(method = "lm") + theme_bw()+theme(text = element_text(size = 15))
+
+
+#Two treatments
+##PRI
+cor(flagmean_macaw_swp_sb$pri, flagmean_macaw_swp_sb$SWP)^2 #0.453
+cor(subset(flagmean_macaw_swp_sb, Date == "2019-08-15")$pri, subset(flagmean_macaw_swp_sb, Date == "2019-08-15")$SWP)^2  #0.3165
+cor(subset(flagmean_macaw_swp_sb, Date == "2019-08-02")$pri, subset(flagmean_macaw_swp_sb, Date == "2019-08-02")$SWP)^2  #0.0167
+cor(subset(flagmean_macaw_swp_sb, Date == "2019-06-28")$pri, subset(flagmean_macaw_swp_sb, Date == "2019-06-28")$SWP)^2  #0.00660
+cor(subset(flagmean_macaw_swp_sb, Treatment2 == "100% ET")$pri, subset(flagmean_macaw_swp_sb, Treatment2 == "100% ET")$SWP)^2  #0.3363
+cor(subset(flagmean_macaw_swp_sb, Treatment2 == "35% ET")$pri, subset(flagmean_macaw_swp_sb, Treatment2 == "35% ET")$SWP)^2  #0.5256
+##PRInorm
+cor(flagmean_macaw_swp_sb$prinorm, flagmean_macaw_swp_sb$SWP)^2 #0.402
+cor(subset(flagmean_macaw_swp_sb, Date == "2019-08-15")$prinorm, subset(flagmean_macaw_swp_sb, Date == "2019-08-15")$SWP)^2  #0.413
+cor(subset(flagmean_macaw_swp_sb, Date == "2019-08-02")$prinorm, subset(flagmean_macaw_swp_sb, Date == "2019-08-02")$SWP)^2  #0.070
+cor(subset(flagmean_macaw_swp_sb, Date == "2019-06-28")$prinorm, subset(flagmean_macaw_swp_sb, Date == "2019-06-28")$SWP)^2  #0.023
+cor(subset(flagmean_macaw_swp_sb, Treatment2 == "100% ET")$prinorm, subset(flagmean_macaw_swp_sb, Treatment2 == "100% ET")$SWP)^2  #0.196
+cor(subset(flagmean_macaw_swp_sb, Treatment2 == "35% ET")$prinorm, subset(flagmean_macaw_swp_sb, Treatment2 == "35% ET")$SWP)^2  #0.488
+
+
+#three treatments
+cor(flagmean_macaw_swp$prinorm, flagmean_macaw_swp$SWP)^2 #0.408
+cor(subset(flagmean_macaw_swp, Date == "2019-08-15")$prinorm, subset(flagmean_macaw_swp, Date == "2019-08-15")$SWP)^2  #0.366
+cor(subset(flagmean_macaw_swp, Date == "2019-08-02")$prinorm, subset(flagmean_macaw_swp, Date == "2019-08-02")$SWP)^2  #0.069
+cor(subset(flagmean_macaw_swp, Date == "2019-06-28")$prinorm, subset(flagmean_macaw_swp, Date == "2019-06-28")$SWP)^2  #0.0229
+cor(subset(flagmean_macaw_swp, Treatment2 == "100% ET")$prinorm, subset(flagmean_macaw_swp, Treatment2 == "100% ET")$SWP)^2  #0.1963
+cor(subset(flagmean_macaw_swp, Treatment2 == "35% ET")$prinorm, subset(flagmean_macaw_swp, Treatment2 == "35% ET")$SWP)^2  #0.4885
+
+
+cor(flagmean_macaw_swp_sb$ndvi, flagmean_macaw_swp_sb$SWP)^2 #0.303
+cor(subset(flagmean_macaw_swp_sb, Date == "2019-08-15")$ndvi, subset(flagmean_macaw_swp_sb, Date == "2019-08-15")$SWP)^2  #0.3547
+cor(subset(flagmean_macaw_swp_sb, Date == "2019-08-02")$ndvi, subset(flagmean_macaw_swp_sb, Date == "2019-08-02")$SWP)^2  #0.1173
+cor(subset(flagmean_macaw_swp_sb, Date == "2019-06-28")$ndvi, subset(flagmean_macaw_swp_sb, Date == "2019-06-28")$SWP)^2  #0.0293
+cor(subset(flagmean_macaw_swp_sb, Treatment2 == "100% ET")$ndvi, subset(flagmean_macaw_swp_sb, Treatment2 == "100% ET")$SWP)^2  #0.1021
+cor(subset(flagmean_macaw_swp_sb, Treatment2 == "35% ET")$ndvi, subset(flagmean_macaw_swp_sb, Treatment2 == "35% ET")$SWP)^2  #0.3892
+
+
+
+cor(subset(flagmean_macaw_swp_sb, Date =))
+```
+#####Predictions 
+```{r}
+
+```
+
+###Licor
+```{r}
+flagmean_macaw_licor <- base::merge(flagmean_macaw, licor_PL, by = c("Block","Treatment","Plant","Date"))
+dim(flagmean_macaw_licor)  #330, 36
+dim(flagmean_macaw)  #360, 33
+dim(licor_PL)  #1070, 7
+dim(subset(licor_PL, Date=="2019-06-28")) #120,7
+dim(subset(licor_PL, Date=="2019-08-02")) #160,7
+dim(subset(licor_PL, Date=="2019-08-15")) #150,7
+
+names(flagmean_macaw_licor)
+
+#get rid of control ww group 
+flagmean_macaw_licor_sb <- subset(flagmean_macaw_licor, Treatment != "CONTROL WW")
+flagmean_macaw_licor_sb$Treatment2 <- flagmean_macaw_licor_sb$Treatment
+flagmean_macaw_licor_sb$Treatment2
+for(i in 1:nrow(flagmean_macaw_licor_sb)){
+  if(flagmean_macaw_licor_sb[i,]$Treatment2 == "CONTROL DDD"){
+    flagmean_macaw_licor_sb[i,]$Treatment2 = "35% ET"
+  }
+  if(flagmean_macaw_licor_sb[i,]$Treatment2 == "BAYER 16 (SOIL) WW"){
+    flagmean_macaw_licor_sb[i,]$Treatment2 = "100% ET"
+  }
+}
+ggplot(subset(flagmean_macaw_licor, Treatment != "CONTROL WW" & Date == "2019-08-15"), aes(x = pri, y = Cond, col = as.factor(Treatment))) + geom_point() #+ facet_wrap(~Date, nrow = 3, scales  = "free")
+
+```
+
+##Flag-row mean
+###Licor
+####Plots
+```{r}
+rowflagmean_macaw_licor <- aggregate(flagmean_macaw_licor[,c(6:17, 22:33, 35:36)], by = list("Block" = flagmean_macaw_licor$Block, "Treatment" = flagmean_macaw_licor$Treatment, "Date" = flagmean_macaw_licor$Date, "Plot" = flagmean_macaw_licor$Plot), FUN = function(x){mean(x, na.rm = TRUE)})
+dim(rowflagmean_macaw_licor)  #45, 30
+
+rowflagmean_macaw_licor_sb <- aggregate(flagmean_macaw_licor_sb[,c(6:17, 22:33, 35:36)], by = list("Block" = flagmean_macaw_licor_sb$Block, "Treatment" = flagmean_macaw_licor_sb$Treatment, "Date" = flagmean_macaw_licor_sb$Date, "Plot" = flagmean_macaw_licor_sb$Plot), FUN = function(x){mean(x, na.rm = TRUE)})
+dim(rowflagmean_macaw_licor_sb)  #30, 30
+dim(subset(rowflagmean_macaw_licor, Date=="2019-06-28"))  #15.30
+dim(subset(rowflagmean_macaw_licor, Date=="2019-08-02"))  #15.30
+dim(subset(rowflagmean_macaw_licor, Date=="2019-08-15"))  #15.30
+
+
+##PRI
+p1 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-06-28"), aes(x = pri, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-08-02"), aes(x = pri, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-08-15"), aes(x = pri, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_licor_sb), aes(x = pri, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+##PRInorm
+p1 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-06-28"), aes(x = prinorm, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-08-02"), aes(x = prinorm, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-08-15"), aes(x = prinorm, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_licor_sb), aes(x = prinorm, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+
+##NDVI
+p1 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-06-28"), aes(x = ndvi, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-08-02"), aes(x = ndvi, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-08-15"), aes(x = ndvi, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_licor_sb), aes(x = ndvi, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+##RDVI
+p1 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-06-28"), aes(x = rdvi, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-08-02"), aes(x = rdvi, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-08-15"), aes(x = rdvi, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_licor_sb), aes(x = rdvi, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+##RER
+p1 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-06-28"), aes(x = rer, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RER") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-08-02"), aes(x = rer, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RER") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-08-15"), aes(x = rer, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RER") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_licor_sb), aes(x = rer, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RER") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+#TCARI
+p1 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-06-28"), aes(x = tcari, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("TCARI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-08-02"), aes(x = tcari, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("TCARI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-08-15"), aes(x = tcari, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("TCARI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_licor_sb), aes(x = tcari, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("TCARI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+#WI
+p1 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-06-28"), aes(x = wi, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("WI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-08-02"), aes(x = wi, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("WI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_licor_sb, Date == "2019-08-15"), aes(x = wi, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("WI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_licor_sb), aes(x = wi, y = Cond)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("WI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+
+
+ggplot(subset(rowflagmean_macaw_licor_sb), aes(x = rdvi, y = Cond)) + geom_point(aes(color = as.factor(Date)))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggplot(subset(rowflagmean_macaw_licor_sb), aes(x = ndvi, y = Cond)) + geom_point(aes(color = as.factor(Date)))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggplot(subset(rowflagmean_macaw_licor_sb), aes(x = rer, y = Cond)) + geom_point(aes(color = as.factor(Date)))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RER") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggplot(subset(rowflagmean_macaw_licor_sb), aes(x = prinorm, y = Cond)) + geom_point(aes(color = as.factor(Date)))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+
+```
+####Quantitative analysis
+#####t-test
+```{r}
+#three treatments 
+ggplot(rowflagmean_macaw_licor, aes(x = as.factor(Date), y = Cond, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("Stomatal Conductance Row Average") 
+lm6 <- lm(Cond~Treatment, data = subset(rowflagmean_macaw_licor, Date == "2019-06-28")) 
+lm6
+hsd1 <- HSD.test(lm6, "Treatment", group = TRUE)
+hsd1
+
+lm7 <- lm(Cond~Treatment, data = subset(rowflagmean_macaw_licor, Date == "2019-08-02")) 
+lm7
+hsd2 <- HSD.test(lm7, "Treatment", group = TRUE)
+hsd2
+
+lm8 <- lm(Cond~Treatment, data = subset(rowflagmean_macaw_licor, Date == "2019-08-15")) 
+lm8
+hsd3 <- HSD.test(lm8, "Treatment", group = TRUE)
+hsd3
+
+#two treatments
+ggplot(rowflagmean_macaw_licor_sb, aes(x = as.factor(Date), y = Cond, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab(expression(paste("G"[s], " (mol∙m"^"-2","s"^"-1",")"))) + scale_fill_tableau() + ggtitle("Stomatal Conductance Row Average") 
+
+lm6 <- lm(Cond~Treatment, data = subset(rowflagmean_macaw_licor_sb, Date == "2019-06-28")) 
+lm6
+hsd1 <- HSD.test(lm6, "Treatment", group = TRUE)
+hsd1
+
+lm7 <- lm(Cond~Treatment, data = subset(rowflagmean_macaw_licor_sb, Date == "2019-08-02")) 
+lm7
+hsd2 <- HSD.test(lm7, "Treatment", group = TRUE)
+hsd2
+
+lm8 <- lm(Cond~Treatment, data = subset(rowflagmean_macaw_licor_sb, Date == "2019-08-15")) 
+lm8
+hsd3 <- HSD.test(lm8, "Treatment", group = TRUE)
+hsd3
+
+```
+#####Two treatments
+```{r}
+#PRI
+cor(rowflagmean_macaw_licor_sb$pri, rowflagmean_macaw_licor_sb$Cond)^2  #0.036
+lm1 <- lm(pri~Cond, data = rowflagmean_macaw_licor_sb)
+summary(lm1)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$pri, subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$Cond)^2  #0.247
+lm2 <- lm(pri~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$pri, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$Cond)^2  #0.0244
+lm3 <- lm(pri~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$pri, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$Cond)^2  #0.380
+lm4 <- lm(pri~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15"))
+summary(lm4)  #.
+
+#ndvi
+cor(rowflagmean_macaw_licor_sb$ndvi, rowflagmean_macaw_licor_sb$Cond)^2  #0.267
+lm1 <- lm(ndvi~Cond, data = rowflagmean_macaw_licor_sb)
+summary(lm1)  #**
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$ndvi, subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$Cond)^2  #0.616
+lm2 <- lm(ndvi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28"))
+summary(lm2)  #**
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$ndvi, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$Cond)^2  #0.637
+lm3 <- lm(ndvi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02"))
+summary(lm3)  #**
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$ndvi, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$Cond)^2  #0.513
+lm4 <- lm(ndvi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15"))
+summary(lm4)  #*
+
+#rdvi
+cor(rowflagmean_macaw_licor_sb$rdvi, rowflagmean_macaw_licor_sb$Cond)^2  #0.131
+lm1 <- lm(rdvi~Cond, data = rowflagmean_macaw_licor_sb)
+summary(lm1)  #*
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$rdvi, subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$Cond)^2  #0.432
+lm2 <- lm(rdvi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28"))
+summary(lm2)  #*
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$rdvi, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$Cond)^2  #0.714
+lm3 <- lm(rdvi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02"))
+summary(lm3)  #**
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$rdvi, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$Cond)^2  #0.696
+lm4 <- lm(rdvi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15"))
+summary(lm4)  #**
+
+#tcari
+cor(rowflagmean_macaw_licor_sb$tcari, rowflagmean_macaw_licor_sb$Cond)^2  #0.002
+lm1 <- lm(tcari~Cond, data = rowflagmean_macaw_licor_sb)
+summary(lm1)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$tcari, subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$Cond)^2  #0.126
+lm2 <- lm(tcari~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$tcari, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$Cond)^2  #0.195
+lm3 <- lm(tcari~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$tcari, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$Cond)^2  #0.042
+lm4 <- lm(tcari~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15"))
+summary(lm4)  #
+
+#rer
+cor(rowflagmean_macaw_licor_sb$rer, rowflagmean_macaw_licor_sb$Cond)^2  #0.167
+lm1 <- lm(rer~Cond, data = rowflagmean_macaw_licor_sb)
+summary(lm1)  #*
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$rer, subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$Cond)^2  #0.433
+lm2 <- lm(rer~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28"))
+summary(lm2)  #*
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$rer, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$Cond)^2  #0.343
+lm3 <- lm(rer~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02"))
+summary(lm3)  #.
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$rer, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$Cond)^2  #0.450
+lm4 <- lm(rer~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15"))
+summary(lm4)  #*
+
+#tcari.osavi
+cor(rowflagmean_macaw_licor_sb$tcari.osavi, rowflagmean_macaw_licor_sb$Cond)^2  #0.057
+lm1 <- lm(tcari.osavi~Cond, data = rowflagmean_macaw_licor_sb)
+summary(lm1)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$tcari.osavi, subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$Cond)^2  #0.072
+lm2 <- lm(tcari.osavi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$tcari.osavi, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$Cond)^2  #0.028
+lm3 <- lm(tcari.osavi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$tcari.osavi, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$Cond)^2  #0.038
+lm4 <- lm(tcari.osavi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15"))
+summary(lm4)  #
+
+#pri550
+cor(rowflagmean_macaw_licor_sb$pri550, rowflagmean_macaw_licor_sb$Cond)^2  #0.061
+lm1 <- lm(pri550~Cond, data = rowflagmean_macaw_licor_sb)
+summary(lm1)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$pri550, subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$Cond)^2  #0.098
+lm2 <- lm(pri550~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$pri550, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$Cond)^2  #0.172
+lm3 <- lm(pri550~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$pri550, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$Cond)^2  #0.133
+lm4 <- lm(pri550~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15"))
+summary(lm4)  #
+
+#wi
+cor(rowflagmean_macaw_licor_sb$wi, rowflagmean_macaw_licor_sb$Cond)^2  #0.003
+lm1 <- lm(wi~Cond, data = rowflagmean_macaw_licor_sb)
+summary(lm1)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$wi, subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$Cond)^2  #0.213
+lm2 <- lm(wi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$wi, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$Cond)^2  #0.194
+lm3 <- lm(wi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$wi, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$Cond)^2  #0.012
+lm4 <- lm(wi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15"))
+summary(lm4)  #
+
+#wi.ndvi
+cor(rowflagmean_macaw_licor_sb$wi.ndvi, rowflagmean_macaw_licor_sb$Cond)^2  #0.0502
+lm1 <- lm(wi.ndvi~Cond, data = rowflagmean_macaw_licor_sb)
+summary(lm1)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$wi.ndvi, subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$Cond)^2  #0.346
+lm2 <- lm(wi.ndvi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28"))
+summary(lm2)  #.
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$wi.ndvi, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$Cond)^2  #0.382
+lm3 <- lm(wi.ndvi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02"))
+summary(lm3)  #.
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$wi.ndvi, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$Cond)^2  #0.341
+lm4 <- lm(wi.ndvi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15"))
+summary(lm4)  #.
+
+
+#PRInorm
+cor(rowflagmean_macaw_licor_sb$prinorm, rowflagmean_macaw_licor_sb$Cond)^2  #0.120
+lm1 <- lm(prinorm~Cond, data = rowflagmean_macaw_licor_sb)
+summary(lm1)  #.
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$prinorm, subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$Cond)^2  #0.0114
+lm2 <- lm(prinorm~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$prinorm, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$Cond)^2  #0.2815
+lm3 <- lm(prinorm~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$prinorm, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$Cond)^2  #0.509
+lm4 <- lm(prinorm~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15"))
+summary(lm4)  #*
+
+#PRI/NDVI
+cor(rowflagmean_macaw_licor_sb$pri/rowflagmean_macaw_licor_sb$ndvi, rowflagmean_macaw_licor_sb$Cond)^2  #0.0513
+lm1 <- lm(pri/ndvi~Cond, data = rowflagmean_macaw_licor_sb)
+summary(lm1)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$pri/subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$ndvi, subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$Cond)^2  #0.192
+lm2 <- lm(pri/ndvi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$pri/subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$ndvi, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$Cond)^2  #0.0065
+lm3 <- lm(pri/ndvi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$pri/subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$ndvi, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$Cond)^2  #0.412
+lm4 <- lm(pri/ndvi~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15"))
+summary(lm4)  #*
+
+
+#PRI/(ndvi*rer)
+cor(rowflagmean_macaw_licor_sb$pri/rowflagmean_macaw_licor_sb$ndvi/rowflagmean_macaw_licor_sb$rer, rowflagmean_macaw_licor_sb$Cond)^2  #0.081
+lm1 <- lm(pri/ndvi/rer~Cond, data = rowflagmean_macaw_licor_sb)
+summary(lm1)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$pri/subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$ndvi/subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$rer, subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28")$Cond)^2  #0.0288
+lm2 <- lm(pri/ndvi/rer~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$pri/subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$ndvi/subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$rer, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02")$Cond)^2  #0.161
+lm3 <- lm(pri/ndvi/rer~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$pri/subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$ndvi/subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$rer, subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15")$Cond)^2  #0.465
+lm4 <- lm(pri/ndvi/rer~Cond, data = subset(rowflagmean_macaw_licor_sb, Date=="2019-08-15"))
+summary(lm4)  #*
+
+
+```
+
+###SWP
+####Scatter Plots
+```{r}
+#rowflagmean_swp <- aggregate(swp_PL$SWP, by = list("Block"=swp_PL$Block, "Plot"=swp_PL$Plot, "Treatment"=swp_PL$Treatment, "Date"=swp_PL$Date), FUN = function(x){mean(x, na.rm=TRUE)})
+#names(rowflagmean_swp)[5] <- "SWP"
+rowflagmean_macaw_swp <- aggregate(flagmean_macaw_swp[,c(6:17,22:33,35)], by = list("Block"  = flagmean_macaw_swp$Block, "Treatment" = flagmean_macaw_swp$Treatment, "Date" = flagmean_macaw_swp$Date, "Plot" = flagmean_macaw_swp$Plot), FUN = function(x){mean(x, na.rm = TRUE)})
+rowflagmean_macaw_swp_sb <- aggregate(flagmean_macaw_swp_sb[,c(6:17,22:33,35)], by = list("Block"  = flagmean_macaw_swp_sb$Block, "Treatment" = flagmean_macaw_swp_sb$Treatment2, "Date" = flagmean_macaw_swp_sb$Date, "Plot" = flagmean_macaw_swp_sb$Plot), FUN = function(x){mean(x, na.rm = TRUE)})  #
+
+dim(subset(rowflagmean_macaw_swp, Date == "2019-06-28")) #15,29
+dim(subset(rowflagmean_macaw_swp, Date == "2019-08-02")) #15,29
+dim(subset(rowflagmean_macaw_swp, Date == "2019-08-15")) #15,29
+dim(subset(rowflagmean_macaw_swp_sb, Date == "2019-06-28")) #10,29
+dim(subset(rowflagmean_macaw_swp_sb, Date == "2019-08-02")) #10,29
+dim(subset(rowflagmean_macaw_swp_sb, Date == "2019-08-15")) #10,29
+
+
+
+ggplot(rowflagmean_macaw_swp, aes(x = pri, y = -SWP, col = as.factor(Treatment))) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("SWP vs PRI Row Average") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggplot(rowflagmean_macaw_swp, aes(x = pri, y = -SWP, col = as.factor(Date))) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("SWP vs PRI Row Average") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+
+ggplot(rowflagmean_macaw_swp, aes(x = prinorm, y = -SWP, col = as.factor(Treatment))) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("SWP vs PRInorm Row Average") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggplot(rowflagmean_macaw_swp, aes(x = prinorm, y = -SWP, col = as.factor(Date))) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("SWP vs PRInorm Row Average") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+
+
+#subset to different dates
+##PRInorm
+p1 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-06-28"), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-08-02"), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-08-15"), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_sb), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+##PRI
+p1 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-06-28"), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-08-02"), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-08-15"), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_sb), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+##NDVI
+p1 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-06-28"), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-08-02"), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-08-15"), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_sb), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+##RDVI
+p1 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-06-28"), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-08-02"), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-08-15"), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_sb), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+##RER
+p1 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-06-28"), aes(x = rer, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RER") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-08-02"), aes(x = rer, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RER") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-08-15"), aes(x = rer, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RER") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_sb), aes(x = rer, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RER") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+#TCARI
+p1 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-06-28"), aes(x = tcari, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("TCARI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-08-02"), aes(x = tcari, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("TCARI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-08-15"), aes(x = tcari, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("TCARI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_sb), aes(x = tcari, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("TCARI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+#WI
+p1 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-06-28"), aes(x = wi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("WI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-08-02"), aes(x = wi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("WI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_sb, Date == "2019-08-15"), aes(x = wi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("WI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_sb), aes(x = wi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("WI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+
+
+ggplot(subset(rowflagmean_macaw_swp_sb), aes(x = rdvi, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggplot(subset(rowflagmean_macaw_swp_sb), aes(x = ndvi, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggplot(subset(rowflagmean_macaw_swp_sb), aes(x = pri, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggplot(subset(rowflagmean_macaw_swp_sb), aes(x = prinorm2, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggplot(subset(rowflagmean_macaw_swp_sb), aes(x = rer, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RER") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+
+
+```
+####Boxplot of indices 
+```{r}
+ggplot(rowflagmean_macaw_swp_sb, aes(x = as.factor(Date), y = pri, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI") + scale_fill_tableau() + ggtitle("PRI Row Average") 
+ggplot(rowflagmean_macaw_swp_sb, aes(x = as.factor(Date), y = prinorm, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInorm") + scale_fill_tableau() + ggtitle("PRInorm Row Average") 
+ggplot(rowflagmean_macaw_swp_sb, aes(x = as.factor(Date), y = ndvi, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NDVI") + scale_fill_tableau() + ggtitle("NDVI Row Average") 
+ggplot(rowflagmean_macaw_swp_sb, aes(x = as.factor(Date), y = rdvi, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RDVI") + scale_fill_tableau() + ggtitle("RDVI Row Average") 
+ggplot(rowflagmean_macaw_swp_sb, aes(x = as.factor(Date), y = rer, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RER") + scale_fill_tableau() + ggtitle("RER Row Average") 
+ggplot(rowflagmean_macaw_swp_sb, aes(x = as.factor(Date), y = tcari, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("TCARI") + scale_fill_tableau() + ggtitle("TCARI Row Average") 
+ggplot(rowflagmean_macaw_swp_sb, aes(x = as.factor(Date), y = mcawi, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("MCARI") + scale_fill_tableau() + ggtitle("MCARI Row Average") 
+ggplot(rowflagmean_macaw_swp_sb, aes(x = as.factor(Date), y = wi, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("WI") + scale_fill_tableau() + ggtitle("WI Row Average") 
+ggplot(rowflagmean_macaw_swp_sb, aes(x = as.factor(Date), y = wi.ndvi, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("WI/NDVI") + scale_fill_tableau() + ggtitle("WI/NDVI Row Average") 
+
+```
+
+####Quantitative analysis
+#####t-test
+```{r}
+#three treatments 
+ggplot(rowflagmean_macaw_swp, aes(x = as.factor(Date), y = -SWP, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("SWP Row Average") 
+lm6 <- lm(SWP~Treatment, data = subset(rowflagmean_macaw_swp, Date == "2019-06-28")) 
+lm6
+hsd1 <- HSD.test(lm6, "Treatment", group = TRUE)
+hsd1
+
+lm7 <- lm(SWP~Treatment, data = subset(rowflagmean_macaw_swp, Date == "2019-08-02")) 
+lm7
+hsd2 <- HSD.test(lm7, "Treatment", group = TRUE)
+hsd2
+
+lm8 <- lm(SWP~Treatment, data = subset(rowflagmean_macaw_swp, Date == "2019-08-15")) 
+lm8
+hsd3 <- HSD.test(lm8, "Treatment", group = TRUE)
+hsd3
+
+#two treatments
+ggplot(rowflagmean_macaw_swp_sb, aes(x = as.factor(Date), y = -SWP, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("SWP Row Average") 
+
+lm6 <- lm(SWP~Treatment, data = subset(rowflagmean_macaw_swp_sb, Date == "2019-06-28")) 
+lm6
+hsd1 <- HSD.test(lm6, "Treatment", group = TRUE)
+hsd1
+
+lm7 <- lm(SWP~Treatment, data = subset(rowflagmean_macaw_swp_sb, Date == "2019-08-02")) 
+lm7
+hsd2 <- HSD.test(lm7, "Treatment", group = TRUE)
+hsd2
+
+lm8 <- lm(SWP~Treatment, data = subset(rowflagmean_macaw_swp_sb, Date == "2019-08-15")) 
+lm8
+hsd3 <- HSD.test(lm8, "Treatment", group = TRUE)
+hsd3
+
+```
+####Corelations and linear 
+#####Three treatments
+```{r}
+cor(rowflagmean_macaw_swp$pri, rowflagmean_macaw_swp$SWP)^2  #0.671
+lm1 <- lm(pri~SWP, data = rowflagmean_macaw_swp)
+summary(lm1)  #***
+cor(subset(rowflagmean_macaw_swp, Date=="2019-06-28")$pri, subset(rowflagmean_macaw_swp, Date=="2019-06-28")$SWP)^2  #0.021
+lm2 <- lm(pri~SWP, data = subset(rowflagmean_macaw_swp, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(rowflagmean_macaw_swp, Date=="2019-08-02")$pri, subset(rowflagmean_macaw_swp, Date=="2019-08-02")$SWP)^2  #0.015
+lm3 <- lm(pri~SWP, data = subset(rowflagmean_macaw_swp, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_swp, Date=="2019-08-15")$pri, subset(rowflagmean_macaw_swp, Date=="2019-08-15")$SWP)^2  #0.425
+lm4 <- lm(pri~SWP, data = subset(rowflagmean_macaw_swp, Date=="2019-08-15"))
+summary(lm4)  #**
+
+```
+#####Two treatments
+```{r}
+#PRI
+cor(rowflagmean_macaw_swp_sb$pri, rowflagmean_macaw_swp_sb$SWP)^2  #0.683
+lm1 <- lm(pri~SWP, data = rowflagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$pri, subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.0262
+lm2 <- lm(pri~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$pri, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.020
+lm3 <- lm(pri~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$pri, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.785
+lm4 <- lm(pri~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #***
+
+#ndvi
+cor(rowflagmean_macaw_swp_sb$ndvi, rowflagmean_macaw_swp_sb$SWP)^2  #0.649
+lm1 <- lm(ndvi~SWP, data = rowflagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$ndvi, subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.453
+lm2 <- lm(ndvi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #*
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$ndvi, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.641
+lm3 <- lm(ndvi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #**
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$ndvi, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.749
+lm4 <- lm(ndvi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #**
+
+#rdvi
+cor(rowflagmean_macaw_swp_sb$rdvi, rowflagmean_macaw_swp_sb$SWP)^2  #0.282
+lm1 <- lm(rdvi~SWP, data = rowflagmean_macaw_swp_sb)
+summary(lm1)  #**
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$rdvi, subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.248
+lm2 <- lm(rdvi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$rdvi, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.476
+lm3 <- lm(rdvi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #*
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$rdvi, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.845
+lm4 <- lm(rdvi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #***
+
+#tcari
+cor(rowflagmean_macaw_swp_sb$tcari, rowflagmean_macaw_swp_sb$SWP)^2  #0.462
+lm1 <- lm(tcari~SWP, data = rowflagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$tcari, subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.175
+lm2 <- lm(tcari~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$tcari, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.110
+lm3 <- lm(tcari~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$tcari, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.08
+lm4 <- lm(tcari~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #
+
+#rer
+cor(rowflagmean_macaw_swp_sb$rer, rowflagmean_macaw_swp_sb$SWP)^2  #0.364
+lm1 <- lm(rer~SWP, data = rowflagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$rer, subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.444
+lm2 <- lm(rer~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #*
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$rer, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.678
+lm3 <- lm(rer~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #**
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$rer, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.585
+lm4 <- lm(rer~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #**
+
+#tcari.osavi
+cor(rowflagmean_macaw_swp_sb$tcari.osavi, rowflagmean_macaw_swp_sb$SWP)^2  #0.504
+lm1 <- lm(tcari.osavi~SWP, data = rowflagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$tcari.osavi, subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.000
+lm2 <- lm(tcari.osavi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$tcari.osavi, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.0369
+lm3 <- lm(tcari.osavi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$tcari.osavi, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.0429
+lm4 <- lm(tcari.osavi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #
+
+#pri550
+cor(rowflagmean_macaw_swp_sb$pri550, rowflagmean_macaw_swp_sb$SWP)^2  #0.064
+lm1 <- lm(pri550~SWP, data = rowflagmean_macaw_swp_sb)
+summary(lm1)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$pri550, subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.172
+lm2 <- lm(pri550~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$pri550, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.247
+lm3 <- lm(pri550~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$pri550, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.015
+lm4 <- lm(pri550~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #
+
+#wi
+cor(rowflagmean_macaw_swp_sb$wi, rowflagmean_macaw_swp_sb$SWP)^2  #0.456
+lm1 <- lm(wi~SWP, data = rowflagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$wi, subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.468
+lm2 <- lm(wi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #*
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$wi, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.030
+lm3 <- lm(wi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$wi, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.105
+lm4 <- lm(wi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #
+
+#wi.ndvi
+cor(rowflagmean_macaw_swp_sb$wi.ndvi, rowflagmean_macaw_swp_sb$SWP)^2  #0.201
+lm1 <- lm(wi.ndvi~SWP, data = rowflagmean_macaw_swp_sb)
+summary(lm1)  #*
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$wi.ndvi, subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.556
+lm2 <- lm(wi.ndvi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #*
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$wi.ndvi, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.158
+lm3 <- lm(wi.ndvi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$wi.ndvi, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.299
+lm4 <- lm(wi.ndvi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #
+
+
+#PRInorm
+cor(rowflagmean_macaw_swp_sb$prinorm, rowflagmean_macaw_swp_sb$SWP)^2  #0.702
+lm1 <- lm(prinorm~SWP, data = rowflagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$prinorm, subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.056
+lm2 <- lm(prinorm~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$prinorm, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.229
+lm3 <- lm(prinorm~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$prinorm, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.870
+lm4 <- lm(prinorm~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #***
+
+#PRI/NDVI
+cor(rowflagmean_macaw_swp_sb$pri/rowflagmean_macaw_swp_sb$ndvi, rowflagmean_macaw_swp_sb$SWP)^2  #0.702
+lm1 <- lm(pri/ndvi~SWP, data = rowflagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$pri/subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$ndvi, subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.011
+lm2 <- lm(pri/ndvi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$pri/subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$ndvi, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.054
+lm3 <- lm(pri/ndvi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$pri/subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$ndvi, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.812
+lm4 <- lm(pri/ndvi~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #***
+
+
+
+#PRI/(ndvi*rer)
+cor(rowflagmean_macaw_swp_sb$pri/rowflagmean_macaw_swp_sb$ndvi/rowflagmean_macaw_swp_sb$rer, rowflagmean_macaw_swp_sb$SWP)^2  #0.733
+lm1 <- lm(pri/ndvi/rer~SWP, data = rowflagmean_macaw_swp_sb)
+summary(lm1)  #***
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$pri/subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$ndvi/subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$rer, subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28")$SWP)^2  #0.0259
+lm2 <- lm(pri/ndvi/rer~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-06-28"))
+summary(lm2)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$pri/subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$ndvi/subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$rer, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02")$SWP)^2  #0.192
+lm3 <- lm(pri/ndvi/rer~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-02"))
+summary(lm3)  #
+cor(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$pri/subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$ndvi/subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$rer, subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15")$SWP)^2  #0.841
+lm4 <- lm(pri/ndvi/rer~SWP, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15"))
+summary(lm4)  #***
+
+
+```
+###Predictions
+####Univariable regression
+```{r}
+#pri/ndvi/rer
+rowflagmean_macaw_swp_sb$prinorm2 <- rowflagmean_macaw_swp_sb$pri/rowflagmean_macaw_swp_sb$ndvi/rowflagmean_macaw_swp_sb$rer
+lm10 <- lm(SWP~prinorm2, data = rowflagmean_macaw_swp_sb)
+lm10 #-190.745 * prinorm2 + 1.774
+summary(lm10)  #R2=0.7331
+
+#boxplot
+ggplot(rowflagmean_macaw_swp_sb, aes(x = as.factor(Date), y = prinorm2, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI/(NDVI*RER)") + scale_fill_tableau() + ggtitle("PRI/(NDVI*RER) Row Average") 
+#scatter plot
+ggplot(subset(rowflagmean_macaw_swp_sb), aes(x = prinorm2, y = -SWP)) + geom_point(aes(color = as.factor(Date)))+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE) + labs(color = "Date")#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+
+#PRInorm2 function 
+PRInorm2_map <- function(macaw){
+  #pri
+  x530 <- macaw$X530/65535
+  x570 <- macaw$X570/65535
+  pri <- (x530-x570)/(x530+x570)
+  #ndvi
+  red <- macaw$X670/65535
+  nir <- macaw$X800/65535
+  ndvi <- (nir-red)/(nir+red)
+  #rer
+  x700 <- macaw$X700/65535
+  x670 <- macaw$X670/65535
+  rer <- x700/x670
+  #PRInorm
+  prinorm2 <- pri/(ndvi*rer)
+  return(prinorm2)
+}
+
+macaw_081519_PRInorm2 <- PRInorm2_map(macaw_081519_masked)
+predswp_macaw_081519_prinorm2 <- (-190.745)*macaw_081519_PRInorm2 + 1.774
+predswp_macaw_081519_prinorm2_masked <- reclassify(predswp_macaw_081519_prinorm2, rbind(c(-Inf, 0, NA), c(10,Inf,NA)))
+writeRaster(predswp_macaw_081519_prinorm2, filename = file.path(path_output, "predswp_macaw_081519_prinorm2.tif"))
+writeRaster(predswp_macaw_081519_prinorm2_masked, filename = file.path(path_output, "predswp_macaw_081519_prinorm2_masked.tif"))
+
+macaw_080219_PRInorm2 <- PRInorm2_map(macaw_080219_masked)
+predswp_macaw_080219_prinorm2 <- (-190.745)*macaw_080219_PRInorm2 + 1.774
+predswp_macaw_080219_prinorm2_masked <- reclassify(predswp_macaw_080219_prinorm2, rbind(c(-Inf, 0, NA), c(10,Inf,NA)))
+writeRaster(predswp_macaw_080219_prinorm2, filename = file.path(path_output, "predswp_macaw_080219_prinorm2.tif"))
+writeRaster(predswp_macaw_080219_prinorm2_masked, filename = file.path(path_output, "predswp_macaw_080219_prinorm2_masked.tif"))
+
+macaw_062819_PRInorm2 <- PRInorm2_map(macaw_062819_masked)
+predswp_macaw_062819_prinorm2 <- (-190.745)*macaw_062819_PRInorm2 + 1.774
+predswp_macaw_062819_prinorm2_masked <- reclassify(predswp_macaw_062819_prinorm2, rbind(c(-Inf, 0, NA), c(10,Inf,NA)))
+writeRaster(predswp_macaw_062819_prinorm2, filename = file.path(path_output, "predswp_macaw_062819_prinorm2.tif"))
+writeRaster(predswp_macaw_062819_prinorm2_masked, filename = file.path(path_output, "predswp_macaw_062819_prinorm2_masked.tif"))
+
+#predlin_macaw_081519_masked <- reclassify(predlin_macaw_081519, rbind(c(-Inf, 0, NA), c(10,Inf,NA)))
+
+
+
+
+lm3 <- lm(SWP~pri, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15"))
+lm3 #-125.080*PRI + 0.275
+summary(lm3)
+ggplot(subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15"), aes(x = SWP, y = pri)) + geom_point()
+predlin_macaw_081519_PRI <- (-125.08)*macaw_081519_PRI + 0.275
+writeRaster(predlin_macaw_081519_PRI, filename = file.path(path_output, "predlin_macaw_081519_PRI.tif"))
+
+
+lm4 <- lm(SWP~prinorm, data = subset(rowflagmean_macaw_swp_sb, Date=="2019-08-15"))
+lm4 #-107.621*PRInorm + 2.984
+summary(lm4) 
+predlin_macaw_081519_PRInorm <- (-107.621)*macaw_081519_PRInorm + 2.984
+writeRaster(predlin_macaw_081519_PRInorm, filename = file.path(path_output, "predlin_macaw_081519_PRInorm.tif"),overwrite = TRUE)
+#remove the outliers
+predlin_macaw_081519_PRInorm <- reclassify(predlin_macaw_081519_PRInorm, rbind(c(-Inf, 0, NA), c(12,Inf,NA)))
+predlin_macaw_081519_PRInorm
+plot(predlin_macaw_081519_PRInorm)
+
+lm5 <- lm(SWP ~ pri + ndvi + rer, data = rowflagmean_macaw_swp_sb)
+lm5 #28.744 - 71.929*pri -25.275 * ndvi - 1.652 * rer
+summary(lm5)  #
+nrow(rowflagmean_macaw_swp_sb)  #30
+rowflagmean_macaw_swp_sb$SWP_predlin <- predict(lm5,rowflagmean_macaw_swp_sb)
+ggplot(rowflagmean_macaw_swp_sb, aes(x = SWP, y = SWP_predlin))+geom_point(aes(color = as.factor(Date)))+geom_smooth(method = "lm",se = FALSE) + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right") + xlab("Observed SWP") + ylab("Predicted SWP")
+
+
+cor(predict(lm5, rowflagmean_macaw_swp_sb), rowflagmean_macaw_swp_sb$SWP)^2  #0.7847
+cor(predict(lm5, subset(rowflagmean_macaw_swp_sb, Date == "2019-08-15")), subset(rowflagmean_macaw_swp_sb, Date == "2019-08-15")$SWP)^2  #0.856
+cor(predict(lm5, subset(rowflagmean_macaw_swp_sb, Date == "2019-08-02")), subset(rowflagmean_macaw_swp_sb, Date == "2019-08-02")$SWP)^2  #0.483
+cor(predict(lm5, subset(rowflagmean_macaw_swp_sb, Date == "2019-06-28")), subset(rowflagmean_macaw_swp_sb, Date == "2019-06-28")$SWP)^2  #0.284
+#map
+predlin_macaw_081519 <- 28.744 - 71.929*PRI(macaw_081519_masked) - 25.275*NDVI(macaw_081519_masked) - 1.652 * RER(macaw_081519_masked) 
+predlin_macaw_081519
+#remove the outliers
+predlin_macaw_081519_masked <- reclassify(predlin_macaw_081519, rbind(c(-Inf, 0, NA), c(10,Inf,NA)))
+#output
+writeRaster(predlin_macaw_081519, filename = file.path(path_output, "predlin_macaw_081519_raw.tif"))
+writeRaster(predlin_macaw_081519_masked, filename = file.path(path_output, "predlin_macaw_081519_masked.tif"))
+plot(predlin_macaw_081519_masked)
+
+```
+
+####Stepwise regression 
+```{r}
+library(MASS)
+names(rowflagmean_macaw_swp_sb)
+fullmodel_rowflagmean <- lm(SWP~pri + ndvi + wi  + mcawi + tcari.osavi + tcari + pri550  + rer , data = rowflagmean_macaw_swp_sb)
+stepmodel_rowflagmean <- stepAIC(fullmodel_rowflagmean, direction = "both", trace = FALSE)
+stepmodel_rowflagmean
+summary(stepmodel_rowflagmean)
+stepmodel_rowflagmean$coefficients
+
+library(leaps)
+stepmodel_rowflagmean_2 <- regsubsets(SWP ~ pri + ndvi + wi  + mcawi + tcari.osavi + tcari + pri550  + rer , data = rowflagmean_macaw_swp_sb, nvmax = 5, method = "seqrep")
+summary(stepmodel_rowflagmean_2)
+stepmodel_rowflagmean_2$nbest
+
+library(caret)
+set.seed(777)
+trainIndex <- sample.split(rowflagmean_macaw_swp_sb, SplitRatio = 0.7, group = rowflagmean_macaw_swp_sb$Treatment)
+train_rowflagmean_macaw_swp_sb <- rowflagmean_macaw_swp_sb[trainIndex, ]
+test_rowflagmean_macaw_swp_sb <- rowflagmean_macaw_swp_sb[!trainIndex, ]
+table(train_rowflagmean_macaw_swp_sb$Date) #7,7,7
+table(test_rowflagmean_macaw_swp_sb$Date) #3,3,3
+
+
+#train_PLr <- flagmean_macaw_phys[trainIndex, ]
+#test_PLr <- flagmean_macaw_phys[-trainIndex,]
+
+train.control <- trainControl(method = "cv", number = 3)
+stepmodel_rowflagmean_3 <- train(SWP ~ pri + ndvi + wi  + mcawi + tcari.osavi + tcari + pri550  + rer , data = train_rowflagmean_macaw_swp_sb, method = "leapSeq")
+stepmodel_rowflagmean_3$bestTune  #4 
+summary(stepmodel_rowflagmean_3$finalModel)
+pred_SWP_3 <- predict(stepmodel_rowflagmean_3, test_rowflagmean_macaw_swp_sb)
+cor(pred_SWP_3, test_rowflagmean_macaw_swp_sb$SWP)^2  #0.746
+RMSE(pred_SWP_3, test_rowflagmean_macaw_swp_sb$SWP) #0.872
+MAE(pred_SWP_3, test_rowflagmean_macaw_swp_sb$SWP) #0.675
+
+stepmodel_rowflagmean_3 <- train(SWP ~ pri + ndvi + wi  + mcawi + tcari.osavi + tcari + pri550  + rer , data = train_rowflagmean_macaw_swp_sb, method = "leapSeq", trControl = train.control)
+stepmodel_rowflagmean_3$bestTune  #4 
+summary(stepmodel_rowflagmean_3$finalModel)
+pred_SWP_3 <- predict(stepmodel_rowflagmean_3, test_rowflagmean_macaw_swp_sb)
+cor(pred_SWP_3, test_rowflagmean_macaw_swp_sb$SWP)^2  #0.746
+RMSE(pred_SWP_3, test_rowflagmean_macaw_swp_sb$SWP) #0.872
+MAE(pred_SWP_3, test_rowflagmean_macaw_swp_sb$SWP) #0.675
+
+stepmodel_rowflagmean_5 <- train(SWP ~ pri + ndvi + wi + tcari.osavi  + rer + prinorm + prinorm2 , data = train_rowflagmean_macaw_swp_sb, method = "leapSeq")
+stepmodel_rowflagmean_5$bestTune  #2
+summary(stepmodel_rowflagmean_5$finalModel)
+stepmodel_rowflagmean_5  
+pred_SWP_5 <- predict(stepmodel_rowflagmean_5, test_rowflagmean_macaw_swp_sb)
+cor(pred_SWP_5, test_rowflagmean_macaw_swp_sb$SWP)^2  #0.778
+RMSE(pred_SWP_5, test_rowflagmean_macaw_swp_sb$SWP) #0.900
+MAE(pred_SWP_5, test_rowflagmean_macaw_swp_sb$SWP) #0.730
+df5 <- data.frame("Observed" = c(train_rowflagmean_macaw_swp_sb$SWP, test_rowflagmean_macaw_swp_sb$SWP), "Predicted" = c(predict(stepmodel_rowflagmean_5, train_rowflagmean_macaw_swp_sb), pred_SWP_5), "Group" = c(rep("Training", length(train_rowflagmean_macaw_swp_sb$SWP)), rep("Testing", length(test_rowflagmean_macaw_swp_sb$SWP))))
+ggplot(df5, aes(x = Observed, y = Predicted, col = Group)) + geom_point() + geom_smooth(method = "lm", se = FALSE) + theme_bw() + ggtitle("Stepwise Regression")
+
+#lm11 <- lm(SWP ~ pri, data = train_rowflagmean_macaw_swp_sb)
+#pred_lm11 <- predict(lm11, test_rowflagmean_macaw_swp_sb)
+#summary(lm11)  #r2 = 0.
+#cor(pred_lm11, test_rowflagmean_macaw_swp_sb$SWP)^2 #0.762
+
+
+stepmodel_rowflagmean_4 <- train(SWP ~ X800 + X450 + X480 + X530 + X550 + X570 + X670 + X700 + X720 + X740 + X900 + X970, data = train_rowflagmean_macaw_swp_sb, method = "leapSeq", trControl = train.control)
+stepmodel_rowflagmean_4
+summary(stepmodel_rowflagmean_4)
+stepmodel_rowflagmean_4$results
+stepmodel_rowflagmean_4$bestTune
+summary(stepmodel_rowflagmean_4$finalModel)  #X550, X670
+pred_SWP_4 <- predict(stepmodel_rowflagmean_4, test_rowflagmean_macaw_swp_sb)
+cor(pred_SWP_4, test_rowflagmean_macaw_swp_sb$SWP)^2  #0.878
+RMSE(pred_SWP_4, test_rowflagmean_macaw_swp_sb$SWP) #0.581
+MAE(pred_SWP_4, test_rowflagmean_macaw_swp_sb$SWP) #0.478
+
+stepmodel_rowflagmean_4$finalModel
+```
+
+
+###Analysis of the prediction
+```{r}
+lm5 <- lm(SWP ~ pri + ndvi + rer, data = rowflagmean_macaw_swp_sb)
+lm5 #28.744 - 71.929*pri -25.275 * ndvi - 1.652 * rer
+
+#1ft
+rowmean_macaw_1ft$DW <- stringi::stri_extract_last_words(rowmean_macaw_1ft$Treatment)
+unique(stringi::stri_extract_first_words(rowmean_macaw_1ft$Treatment))
+for(i in 1:nrow(rowmean_macaw_1ft)){
+  if(rowmean_macaw_1ft$DW[i] %in% c("1.0","0.25","0.5")){
+    rowmean_macaw_1ft$DW[i] = "WW"
+  }
+}
+rowmean_macaw_1ft$DW <- as.factor(rowmean_macaw_1ft$DW)
+
+swppred_prilin_1ft <- predict(lm5, rowmean_macaw_1ft)
+swppred_prilin_1ft <- cbind(rowmean_macaw_1ft, swppred_prilin_1ft)
+swppred_prilin_1ft_081519 <- subset(swppred_prilin_1ft, Date == "2019-08-15" & DW!= "BUFFER")
+
+dim(swppred_prilin_1ft_081519)
+ggplot(swppred_prilin_1ft_081519, aes(x = DW, y = swppred_prilin_1ft)) + geom_boxplot()
+
+lm6 <- lm(swppred_prilin_1ft~DW, data = swppred_prilin_1ft_081519)
+anova(lm6)
+anova_lm6 <- aov(swppred_prilin_1ft~DW, data = swppred_prilin_1ft_081519)
+anova_lm6
+a <- HSD.test(anova_lm6, "DW", group = TRUE)
+a
+kruskal.test(swppred_prilin_1ft~DW, data = swppred_prilin_1ft_081519)
+
+```
+
+##Rowmean
+```{r}
+unique(rowmean_macaw$Treatment)
+rowmean_macaw$DW <- stringi::stri_extract_last_words(rowmean_macaw$Treatment)
+unique(stringi::stri_extract_first_words(rowmean_macaw$Treatment))
+for(i in 1:nrow(rowmean_macaw)){
+  if(rowmean_macaw$DW[i] %in% c("1.0","0.25","0.5")){
+    rowmean_macaw$DW[i] = "WW"
+  }
+}
+rowmean_macaw$DW <- as.factor(rowmean_macaw$DW)
+
+swppred_prinorm <- predict(lm4, rowmean_macaw)
+swppred_prinorm <- cbind(rowmean_macaw, swppred_prinorm)
+swppred_prinorm_081519 <- subset(swppred_prinorm, Date == "2019-08-15" & DW != "BUFFER")
+dim(swppred_prinorm_081519)
+ggplot(swppred_prinorm_081519, aes(x = DW, y = swppred_prinorm)) + geom_boxplot()
+
+lm5 <- lm(swppred_prinorm~DW, data = swppred_prinorm_081519)
+anova(lm5)
+anova_lm5 <- aov(swppred_prinorm~DW, data = swppred_prinorm_081519)
+anova_lm5
+a <- HSD.test(anova_lm5, "DW", group = TRUE)
+kruskal.test(swppred_prinorm~DW, data = swppred_prinorm_081519)
+
+names(rowmean_macaw) 
+
+for(i in 1:dim(rowflagmean_macaw_swp)[1]){
+  if(rowflagmean_macaw_swp[i,]$Date=="2019-06-26"){
+    rowflagmean_macaw_swp[i,]$Date= "2019-06-28"
+  }
+  if(rowflagmean_macaw_swp[i,]$Date=="2019-08-01"){
+    rowflagmean_macaw_swp[i,]$Date="2019-08-02"
+  }
+  if(rowflagmean_macaw_swp[i,]$Date=="2019-08-14"){
+    rowflagmean_macaw_swp[i,]$Date="2019-08-15"
+  }
+}
+
+
+rowflagmean_swp$Treatment <- as.factor(rowflagmean_swp$Treatment)
+rowflagmean_swp$Block <- as.factor(rowflagmean_swp$Block)
+rowflagmean_swp$Date <- as.Date(rowflagmean_swp$Date)
+rowmean_macaw_sb$Date <- as.Date(rowmean_macaw_sb$Date)
+rowflagmean_swp$Treatment <- factor(rowflagmean_swp$Treatment, levels = c("BAYER 16 (SOIL) WW", "CONTROL WW", "CONTROL DDD"), order = TRUE)
+#flagmean_macaw$Treatment <- factor(flagmean_macaw$Treatment, levels = c("BAYER 16 (SOIL) WW", "CONTROL WW", "CONTROL DDD"), order = TRUE)
+
+rowflagmean_macaw_swp <- base::merge(rowmean_macaw_sb, rowflagmean_swp, by = c("Block","Treatment","Date"))
+dim(rowmean_macaw)  #1242,31
+dim(rowflagmean_swp) #140,5
+dim(rowflagmean_macaw_swp) #0,33
+
+
+```
+
+#Cross-Calibration between dates 
+##from MACAW
+```{r}
+#shapefiles
+path_shp <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/shapefiles"
+panel_0628 <- shapefile(file.path(path_shp, "panel_macaw_0628.shp"))
+panel_0802 <- shapefile(file.path(path_shp, "panel_macaw_0802.shp"))
+panel_0815 <- shapefile(file.path(path_shp, "panel_macaw_0815.shp"))
+plot(panel_0628)
+plot(panel_0802)
+plot(panel_0815)
+#unmasked files
+path_12band <- "D:/MACAW_tomato"
+macaw_081519 <- read_12band(path_12band, "agisoft_20190815_12bands_withgcps.tif")
+macaw_080219 <- read_12band(path_12band, "agisoft_20190802_12bands_withgcps.tif")
+macaw_062819 <- read_12band(path_12band, "agisoft_20190628_12bands_withgcps.tif")
+
+panel_macaw_0628 <- raster::extract(macaw_062819,panel_0628, mean, df = TRUE)
+panel_macaw_0802 <- raster::extract(macaw_080219,panel_0802, mean, df = TRUE)
+panel_macaw_0815 <- raster::extract(macaw_081519,panel_0815, mean, df = TRUE)
+panel_macaw_0628$Color <- panel_0628$Color
+panel_macaw_0802$Color <- panel_0802$Color
+panel_macaw_0815$Color <- panel_0815$Color
+panel_macaw_0628$Date <- "0628"
+panel_macaw_0802$Date <- "0802"
+panel_macaw_0815$Date <- "0815"
+panel_macaw <- rbind(panel_macaw_0628, panel_macaw_0802)
+panel_macaw <- rbind(panel_macaw, panel_macaw_0815)
+panel_macaw
+
+#convert wide to long 
+panel_macaw_long <- tidyr::gather(panel_macaw, wavelength, reflectance, X800:X970, factor_key = TRUE)
+head(panel_macaw_long)
+dim(panel_macaw_long)
+panel_macaw_long$wavelength <- sub(".","",panel_macaw_long$wavelength)
+panel_macaw_long$wavelength <- as.numeric(panel_macaw_long$wavelength)
+panel_macaw_long$ID <- NULL
+panel_macaw_long$Color <- as.factor(panel_macaw_long$Color)
+panel_macaw_long$Date <- as.factor(panel_macaw_long$Date)
+str(panel_macaw_long)
+panel_macaw_long$reflectance <- panel_macaw_long$reflectance/65535
+#plot
+ggplot(panel_macaw_long, aes(x = wavelength, y = reflectance, color = Date, shape = Color)) + geom_point(aes(shape = Color)) + geom_line(aes(linetype =Color)) + theme_bw()
+#The reflectance from the white panel saturated in the visible region 
+ggplot(subset(panel_macaw_long, Color!= "White"), aes(x = wavelength, y = reflectance, color = Date, shape = Color)) + geom_point(aes(shape = Color)) + geom_line(aes(linetype =Color)) + theme_bw()
+
+```
+
+#equations for each band
+```{r}
+#set 0802 as standard 
+#split into different bands
+ls_equations <- list()
+ls_marix <- list()
+ls_bands <- split(panel_macaw_long, panel_macaw_long$wavelength)
+for(i in 1:12){
+  ls_matrix[[i]] <- 
+}
+```
+
+##from Micasense
+```{r}
+#read data
+path_uav <- "C:/Users/tangz/Box Sync/BIOSTIMULANT TRIAL - SEASON 2/ZHEHAN/UAV processed images"
+uav_062819 <- read_uav(path_uav, "tomato_062819_stacks2.tif")
+uav_080219 <- read_uav(path_uav, "tomato_080219_stacks2.tif")
+uav_081519 <- read_uav(path_uav, "tomato_081519_stacks2.tif")
+#remove -10000
+#values(uav_062819)[values(uav_062819) == -10000] <- NA
+#values(uav_080219)[values(uav_080219) == -10000] <- NA
+#values(uav_081519)[values(uav_081519) == -10000] <- NA
+#rowflagmean_macaw_swp_sb <- aggregate(flagmean_macaw_swp_sb[,c(6:17,22:33,35)], by = list("Block"  = flagmean_macaw_swp_sb$Block, "Treatment" = flagmean_macaw_swp_sb$Treatment2, "Date" = flagmean_macaw_swp_sb$Date, "Plot" = flagmean_macaw_swp_sb$Plot), FUN = function(x){mean(x, na.rm = TRUE)})  #
+
+panel_uav_0628 <- raster::extract(uav_062819, panel_0628, fun=function(x){mean(values(x)[values(x)>-10000])}, df = TRUE)
+panel_uav_0802 <- raster::extract(uav_080219, panel_0802, fun=mean, df = TRUE)
+panel_uav_0815 <- raster::extract(uav_081519, panel_0815, fun=mean, df = TRUE)
+panel_uav_0628$Color <- panel_0628$Color
+panel_uav_0802$Color <- panel_0802$Color
+panel_uav_0815$Color <- panel_0815$Color
+panel_uav_0628$Date <- "0628"
+panel_uav_0802$Date <- "0802"
+panel_uav_0815$Date <- "0815"
+panel_uav <- rbind(panel_uav_0628, panel_uav_0802)
+panel_uav <- rbind(panel_uav, panel_uav_0815)
+panel_uav
+
+
+
+```
 
 #---------Useless----------------------------------
 
