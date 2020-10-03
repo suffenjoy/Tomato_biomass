@@ -30,30 +30,614 @@ wavelen_panel <- spectrolab::bands(panel_svc)
 ref_panel <- spectrolab::value(panel_svc)
 plot(panel_svc[1])
 
-wave_panel_1 <- spectrolab::bands(panel_svc[1])
-ref_panel_1 <- spectrolab::value(panel_svc[1])
-df_panel_1 <- data.frame("wavelength"=wave_panel_1, "reflectance"=t(ref_panel_1))
-
-wave_panel_4 <- spectrolab::bands(panel_svc[4])
-ref_panel_4 <- spectrolab::value(panel_svc[4])
-df_panel_4 <- data.frame("wavelength"=wave_panel_4, "reflectance"=t(ref_panel_4))
+#calculate average
+##Before cleaning
+Black_ave_1 <- read.csv(file.path(path_svc_panel, "Black_ave_1.csv"), skip = 24)[,c(21,24)]
+names(Black_ave_1) <- c("wavelength","reflectance")
+Black_ave_1$reflectance <- Black_ave_1$reflectance/100
+Gray_ave_1 <- read.csv(file.path(path_svc_panel, "Gray_ave_1.csv"), skip = 24)[,c(21,24)]
+names(Gray_ave_1) <- c("wavelength","reflectance")
+Gray_ave_1$reflectance <- Gray_ave_1$reflectance/100
+White_ave_1 <- read.csv(file.path(path_svc_panel, "White_ave_1.csv"), skip = 24)[,c(21,24)]
+names(White_ave_1) <- c("wavelength","reflectance")
+White_ave_1$reflectance <- White_ave_1$reflectance/100
+##After cleaning
+Black_ave_2 <- read.csv(file.path(path_svc_panel, "Black_ave_2.csv"), skip = 24)[,c(16,19)]
+names(Black_ave_2) <- c("wavelength","reflectance")
+Black_ave_2$reflectance <- Black_ave_2$reflectance/100
+Gray_ave_2 <- read.csv(file.path(path_svc_panel, "Gray_ave_2.csv"), skip = 24)[,c(16,19)]
+names(Gray_ave_2) <- c("wavelength","reflectance")
+Gray_ave_2$reflectance <- Gray_ave_2$reflectance/100
+White_ave_2 <- read.csv(file.path(path_svc_panel, "White_ave_2.csv"), skip = 24)[,c(16,19)]
+names(White_ave_2) <- c("wavelength","reflectance")
+White_ave_2$reflectance <- White_ave_2$reflectance/100
 
 ```
 
-
-#Plot the 
+#Plot the reflectance
 ```{r}
-plot(panel_svc[1])
-white_0628 <- subset(panel_macaw_long, Date == "0628" & Color == "White")
-black_0628 <- subset(panel_macaw_long, Date == "0628" & Color == "Black")
-ggplot()+ geom_line(aes(x = wavelength, y = reflectance), data = white_0628)+geom_line(aes(x = wavelength, y = reflectance,color = "red"), data = df_panel_1) + xlim(c(440,1000))
-ggplot()+ geom_line(aes(x = wavelength, y = reflectance), data = black_0628)+geom_line(aes(x = wavelength, y = reflectance,color = "red"), data = df_panel_4)# + xlim(c(440,1000))
+#Black Panel
+plot(Black_ave_1$wavelength, Black_ave_1$reflectance, type = "l", xlab = "Wavelength", ylab = "Reflectance", main = "Reflectance from Black Panel", xlim = c(337.5,1000), ylim = c(0, 0.3))
+lines(Black_ave_2$wavelength, Black_ave_2$reflectance, type = "l", col = "red")
+points(subset(panel_macaw_long, Color == "Black" & Date == "0628")$wavelength, subset(panel_macaw_long, Color == "Black" & Date == "0628")$reflectance, col = "orange")
+points(subset(panel_macaw_long, Color == "Black" & Date == "0802")$wavelength, subset(panel_macaw_long, Color == "Black" & Date == "0802")$reflectance, col = "darkgreen", pch = 22)
+points(subset(panel_macaw_long, Color == "Black" & Date == "0815")$wavelength, subset(panel_macaw_long, Color == "Black" & Date == "0815")$reflectance, col = "blue", pch = 17)
+legend("topleft", legend  = c("Before Cleaning", "After Cleaning","06-28","08-02","08-15"), col = c("black","red","orange","darkgreen","blue"), lty = c(1,1,NA,NA,NA),pch = c(NA,NA,1,22,17))
+#Gray Panel
+plot(Gray_ave_1$wavelength, Gray_ave_1$reflectance, type = "l", xlab = "Wavelength", ylab = "Reflectance", main = "Reflectance from Gray Panel", xlim = c(337.5,1000), ylim = c(0, 0.3))
+lines(Gray_ave_2$wavelength, Gray_ave_2$reflectance, type = "l", col = "red")
+points(subset(panel_macaw_long, Color == "Gray" & Date == "0628")$wavelength, subset(panel_macaw_long, Color == "Gray" & Date == "0628")$reflectance, col = "orange")
+points(subset(panel_macaw_long, Color == "Gray" & Date == "0802")$wavelength, subset(panel_macaw_long, Color == "Gray" & Date == "0802")$reflectance, col = "darkgreen", pch = 22)
+points(subset(panel_macaw_long, Color == "Gray" & Date == "0815")$wavelength, subset(panel_macaw_long, Color == "Gray" & Date == "0815")$reflectance, col = "blue", pch = 17)
+legend("topleft", legend  = c("Before Cleaning", "After Cleaning","06-28","08-02","08-15"), col = c("black","red","orange","darkgreen","blue"), lty = c(1,1,NA,NA,NA),pch = c(NA,NA,1,22,17))
 
+#White Panel
+plot(White_ave_1$wavelength, White_ave_1$reflectance, type = "l", xlab = "Wavelength", ylab = "Reflectance", main = "Reflectance from White Panel", xlim = c(337.5,1000), ylim = c(0, 1))
+lines(White_ave_2$wavelength, White_ave_2$reflectance, type = "l", col = "red")
+points(subset(panel_macaw_long, Color == "White" & Date == "0628")$wavelength, subset(panel_macaw_long, Color == "White" & Date == "0628")$reflectance, col = "orange")
+points(subset(panel_macaw_long, Color == "White" & Date == "0802")$wavelength, subset(panel_macaw_long, Color == "White" & Date == "0802")$reflectance, col = "darkgreen", pch = 22)
+points(subset(panel_macaw_long, Color == "White" & Date == "0815")$wavelength, subset(panel_macaw_long, Color == "White" & Date == "0815")$reflectance, col = "blue", pch = 17)
+legend("bottom", legend  = c("Before Cleaning", "After Cleaning","06-28","08-02","08-15"), col = c("White","red","orange","darkgreen","blue"), lty = c(1,1,NA,NA,NA),pch = c(NA,NA,1,22,17))
 
+```
 
-ggplot(subset(panel_macaw_long, Date == "0628" & Color == "White"), aes(x = wavelength, y = reflectance)) + geom_line() + geom_point() + geom_line(df_panel_1) #+ geom_point(aes(x = wavelen_panel,  y = ref_panel))
-plot(subset(panel_macaw_long, Date == "0628" & Color == "White")$wavelength, subset(panel_macaw_long, Date == "0628" & Color == "White")$reflectance, type = "l")
-ggplot(subset(panel_macaw_long, Date != "0815"), aes(x = wavelength, y = reflectance, color = Date, shape = Color)) + geom_point(aes(shape = Color)) + geom_line(aes(linetype =Color)) + theme_bw()
+#Use the 0628 as the standard 
+```{r}
+ls_equations <- list()
+mat_coef <- matrix(0, 2,2)
+colnames(mat_coef) <- c("a","b")
+ls_matrix <- rep(list(mat_coef), 12) #a list with 12 empty matrix
+#store the coefficients in a dataframe, so that it can be merged with the raw data frame
+wavelen_macaw <- c(450, 480, 530, 550, 570, 670, 700, 720, 740, 800, 900, 970)
+df_coef <- data.frame("wavelength"=wavelen_macaw,"a1"=0,"b1"=0,"a2"=0,"b2"=0)
+df_coef
+ls_bands <- split(panel_macaw_long, panel_macaw_long$wavelength)
+names(ls_bands)
+
+for(i in 1:12){
+  #a1
+  a1 <- (subset(ls_bands[[i]],Color=="Black"&Date=="0628")$reflectance-subset(ls_bands[[i]],Color=="Gray"&Date=="0628")$reflectance)/(subset(ls_bands[[i]],Color=="Black"&Date=="0802")$reflectance-subset(ls_bands[[i]],Color=="Gray"&Date=="0802")$reflectance)
+  df_coef[i,]$a1 <- a1
+  #b1
+  b1 <- as.double(subset(ls_bands[[i]],Color=="Black"&Date=="0628")$reflectance) - as.double(a1*subset(ls_bands[[i]],Color=="Black"&Date=="0802")$reflectance)
+  df_coef[i,]$b1 <- b1
+  #a2
+  a2 <- (subset(ls_bands[[i]],Color=="Black"&Date=="0628")$reflectance-subset(ls_bands[[i]],Color=="Gray"&Date=="0628")$reflectance)/(subset(ls_bands[[i]],Color=="Black"&Date=="0815")$reflectance-subset(ls_bands[[i]],Color=="Gray"&Date=="0815")$reflectance)
+  df_coef[i,]$a2 <- a2
+  #b2
+  b2 <- as.double(subset(ls_bands[[i]],Color=="Black"&Date=="0628")$reflectance) - as.double(a2*subset(ls_bands[[i]],Color=="Black"&Date=="0815")$reflectance)
+  df_coef[i,]$b2 <- b2
+}
+
+#verify
+class(panel_macaw_long$wavelength)  #numeric
+head(panel_macaw_long)
+aa <- base::merge(panel_macaw_long, df_coef, by = "wavelength")
+aa$ref_cal <- 0
+head(aa)
+for(i in 1:nrow(aa)){
+  if(aa[i,]$Date=="0802"){
+    aa[i,]$ref_cal = aa[i,]$reflectance * aa[i,]$a1 + aa[i,]$b1
+  }
+  if(aa[i,]$Date=="0628"){
+    aa[i,]$ref_cal = aa[i,]$reflectance
+  }
+  if(aa[i,]$Date=="0815"){
+    aa[i,]$ref_cal = aa[i,]$reflectance * aa[i,]$a2 + aa[i,]$b2
+  }
+}
+head(aa)
+
+#Plot
+plot(Black_ave_1$wavelength, Black_ave_1$reflectance, type = "l", xlab = "Wavelength", ylab = "Reflectance", main = "Reflectance from Black Panel", xlim = c(337.5,1000), ylim = c(0, 0.15))
+lines(Black_ave_2$wavelength, Black_ave_2$reflectance, type = "l", col = "red")
+points(subset(aa, Color == "Black" & Date == "0628")$wavelength, subset(aa, Color == "Black" & Date == "0628")$ref_cal, col = "orange")
+points(subset(aa, Color == "Black" & Date == "0802")$wavelength, subset(aa, Color == "Black" & Date == "0802")$ref_cal, col = "darkgreen", pch = 22)
+points(subset(aa, Color == "Black" & Date == "0815")$wavelength, subset(aa, Color == "Black" & Date == "0815")$ref_cal, col = "blue", pch = 17)
+legend("topleft", legend  = c("Before Cleaning", "After Cleaning","06-28","08-02","08-15"), col = c("black","red","orange","darkgreen","blue"), lty = c(1,1,NA,NA,NA),pch = c(NA,NA,1,22,17))
+
+```
+
+##Use the calibration coefficient for the entire field 
+```{r}
+head(rowflagmean_macaw_swp_sb)
+head(df_coef)
+#change long to wide
+rowflagmean_macaw_swp_cal <- rowflagmean_macaw_swp_sb
+rowflagmean_macaw_swp_cal <- tidyr::gather(rowflagmean_macaw_swp_sb[,1:16], wavelength, reflectance, X800:X970)
+head(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$wavelength <- sub("X","",rowflagmean_macaw_swp_cal$wavelength)
+rowflagmean_macaw_swp_cal$wavelength <- as.numeric(rowflagmean_macaw_swp_cal$wavelength)
+#merge with df_coef
+rowflagmean_macaw_swp_cal <- base::merge(rowflagmean_macaw_swp_cal, df_coef, by = "wavelength")
+#add a column
+rowflagmean_macaw_swp_cal$ref_cal <- 0
+#change rowflagmean_macaw_swp_sb
+for(i in 1:nrow(rowflagmean_macaw_swp_cal)){
+  if(rowflagmean_macaw_swp_cal[i,]$Date=="2019-08-02"){
+    rowflagmean_macaw_swp_cal$ref_cal <- rowflagmean_macaw_swp_cal$reflectance*rowflagmean_macaw_swp_cal$a1 + rowflagmean_macaw_swp_cal$b1
+  }
+  if(rowflagmean_macaw_swp_cal[i,]$Date=="2019-06-28"){
+    rowflagmean_macaw_swp_cal$ref_cal <- rowflagmean_macaw_swp_cal$reflectance
+  }
+  if(rowflagmean_macaw_swp_cal[i,]$Date=="2019-08-15"){
+    rowflagmean_macaw_swp_cal$ref_cal <- rowflagmean_macaw_swp_cal$reflectance*rowflagmean_macaw_swp_cal$a2 + rowflagmean_macaw_swp_cal$b2
+  }
+}
+head(rowflagmean_macaw_swp_cal)
+#drop the old reflectance
+rowflagmean_macaw_swp_cal$reflectance <- NULL
+rowflagmean_macaw_swp_cal$a1 <- NULL
+rowflagmean_macaw_swp_cal$a2 <- NULL
+rowflagmean_macaw_swp_cal$b1 <- NULL
+rowflagmean_macaw_swp_cal$b2 <- NULL
+
+#change long back to wide
+rowflagmean_macaw_swp_cal <- tidyr::spread(rowflagmean_macaw_swp_cal, wavelength, ref_cal)
+head(rowflagmean_macaw_swp_cal)
+colnames(rowflagmean_macaw_swp_cal)[5:16] <- paste0("X",colnames(rowflagmean_macaw_swp_cal)[5:16])
+
+#calculate the indices 
+rowflagmean_macaw_swp_cal$ndvi <- NDVI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$pri <- PRI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$wi <- WI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$wi.ndvi <- WI.NDVI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$mcawi <- MCARI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$tcari.osavi <- TCARI.OSAVI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$tcari <- TCARI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$pri550 <- PRI550(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$prinorm <- PRInorm(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$prinorm550 <- PRInorm550(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$rer <- RER(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$rdvi <- RDVI(rowflagmean_macaw_swp_cal)
+
+head(rowflagmean_macaw_swp_cal)
+
+rowflagmean_macaw_swp_cal <- merge(rowflagmean_macaw_swp_cal, rowflagmean_macaw_swp_sb[,c(1:4,29)], by = c("Block","Treatment","Date","Plot"))
+```
+
+##Plot with rowflagmean_macaw_swp_cal
+###Scatter plot
+```{r}
+p1 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-06-28"), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-02"), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-15"), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_cal), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+#PRI
+p1 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-06-28"), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-02"), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-15"), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_cal), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+##NDVI
+p1 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-06-28"), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-02"), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-15"), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_cal), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+##RDVI
+p1 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-06-28"), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-02"), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-15"), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_cal), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+
+```
+###Boxplot
+```{r}
+ggplot(rowflagmean_macaw_swp_cal, aes(x = as.factor(Date), y = pri, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI") + scale_fill_tableau() + ggtitle("PRI Row Average") 
+ggplot(rowflagmean_macaw_swp_cal, aes(x = as.factor(Date), y = prinorm, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInorm") + scale_fill_tableau() + ggtitle("PRInorm Row Average") 
+ggplot(rowflagmean_macaw_swp_cal, aes(x = as.factor(Date), y = ndvi, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NDVI") + scale_fill_tableau() + ggtitle("NDVI Row Average") 
+ggplot(rowflagmean_macaw_swp_cal, aes(x = as.factor(Date), y = rdvi, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RDVI") + scale_fill_tableau() + ggtitle("RDVI Row Average") 
+ggplot(rowflagmean_macaw_swp_cal, aes(x = as.factor(Date), y = rer, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RER") + scale_fill_tableau() + ggtitle("RER Row Average") 
+
+```
+
+#Use the 0802 as the standard 
+```{r}
+ls_equations <- list()
+mat_coef <- matrix(0, 2,2)
+colnames(mat_coef) <- c("a","b")
+ls_matrix <- rep(list(mat_coef), 12) #a list with 12 empty matrix
+#store the coefficients in a dataframe, so that it can be merged with the raw data frame
+wavelen_macaw <- c(450, 480, 530, 550, 570, 670, 700, 720, 740, 800, 900, 970)
+df_coef <- data.frame("wavelength"=wavelen_macaw,"a1"=0,"b1"=0,"a2"=0,"b2"=0)
+df_coef
+ls_bands <- split(panel_macaw_long, panel_macaw_long$wavelength)
+names(ls_bands)
+
+for(i in 1:12){
+  #a1
+  a1 <- (subset(ls_bands[[i]],Color=="Black"&Date=="0802")$reflectance-subset(ls_bands[[i]],Color=="Gray"&Date=="0802")$reflectance)/(subset(ls_bands[[i]],Color=="Black"&Date=="0628")$reflectance-subset(ls_bands[[i]],Color=="Gray"&Date=="0628")$reflectance)
+  df_coef[i,]$a1 <- a1
+  #b1
+  b1 <- as.double(subset(ls_bands[[i]],Color=="Black"&Date=="0802")$reflectance) - as.double(a1*subset(ls_bands[[i]],Color=="Black"&Date=="0628")$reflectance)
+  df_coef[i,]$b1 <- b1
+  #a2
+  a2 <- (subset(ls_bands[[i]],Color=="Black"&Date=="0802")$reflectance-subset(ls_bands[[i]],Color=="Gray"&Date=="0802")$reflectance)/(subset(ls_bands[[i]],Color=="Black"&Date=="0815")$reflectance-subset(ls_bands[[i]],Color=="Gray"&Date=="0815")$reflectance)
+  df_coef[i,]$a2 <- a2
+  #b2
+  b2 <- as.double(subset(ls_bands[[i]],Color=="Black"&Date=="0802")$reflectance) - as.double(a2*subset(ls_bands[[i]],Color=="Black"&Date=="0815")$reflectance)
+  df_coef[i,]$b2 <- b2
+}
+
+#verify
+class(panel_macaw_long$wavelength)  #numeric
+head(panel_macaw_long)
+aa <- base::merge(panel_macaw_long, df_coef, by = "wavelength")
+aa$ref_cal <- 0
+head(aa)
+for(i in 1:nrow(aa)){
+  if(aa[i,]$Date=="0628"){
+    aa[i,]$ref_cal = aa[i,]$reflectance * aa[i,]$a1 + aa[i,]$b1
+  }
+  if(aa[i,]$Date=="0802"){
+    aa[i,]$ref_cal = aa[i,]$reflectance
+  }
+  if(aa[i,]$Date=="0815"){
+    aa[i,]$ref_cal = aa[i,]$reflectance * aa[i,]$a2 + aa[i,]$b2
+  }
+}
+head(aa)
+
+#Plot
+plot(Black_ave_1$wavelength, Black_ave_1$reflectance, type = "l", xlab = "Wavelength", ylab = "Reflectance", main = "Reflectance from Black Panel", xlim = c(337.5,1000), ylim = c(0, 0.15))
+lines(Black_ave_2$wavelength, Black_ave_2$reflectance, type = "l", col = "red")
+points(subset(aa, Color == "Black" & Date == "0628")$wavelength, subset(aa, Color == "Black" & Date == "0628")$ref_cal, col = "orange")
+points(subset(aa, Color == "Black" & Date == "0802")$wavelength, subset(aa, Color == "Black" & Date == "0802")$ref_cal, col = "darkgreen", pch = 22)
+points(subset(aa, Color == "Black" & Date == "0815")$wavelength, subset(aa, Color == "Black" & Date == "0815")$ref_cal, col = "blue", pch = 17)
+legend("topleft", legend  = c("Before Cleaning", "After Cleaning","06-28","08-02","08-15"), col = c("black","red","orange","darkgreen","blue"), lty = c(1,1,NA,NA,NA),pch = c(NA,NA,1,22,17))
+
+```
+
+##Use the calibration coefficient for the entire field 
+```{r}
+head(rowflagmean_macaw_swp_sb)
+head(df_coef)
+#change long to wide
+rowflagmean_macaw_swp_cal <- rowflagmean_macaw_swp_sb
+rowflagmean_macaw_swp_cal <- tidyr::gather(rowflagmean_macaw_swp_sb[,1:16], wavelength, reflectance, X800:X970)
+head(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$wavelength <- sub("X","",rowflagmean_macaw_swp_cal$wavelength)
+rowflagmean_macaw_swp_cal$wavelength <- as.numeric(rowflagmean_macaw_swp_cal$wavelength)
+#merge with df_coef
+rowflagmean_macaw_swp_cal <- base::merge(rowflagmean_macaw_swp_cal, df_coef, by = "wavelength")
+#add a column
+rowflagmean_macaw_swp_cal$ref_cal <- 0
+#change rowflagmean_macaw_swp_sb
+for(i in 1:nrow(rowflagmean_macaw_swp_cal)){
+  if(rowflagmean_macaw_swp_cal[i,]$Date=="2019-06-28"){
+    rowflagmean_macaw_swp_cal$ref_cal <- rowflagmean_macaw_swp_cal$reflectance*rowflagmean_macaw_swp_cal$a1 + rowflagmean_macaw_swp_cal$b1
+  }
+  if(rowflagmean_macaw_swp_cal[i,]$Date=="2019-08-02"){
+    rowflagmean_macaw_swp_cal$ref_cal <- rowflagmean_macaw_swp_cal$reflectance
+  }
+  if(rowflagmean_macaw_swp_cal[i,]$Date=="2019-08-15"){
+    rowflagmean_macaw_swp_cal$ref_cal <- rowflagmean_macaw_swp_cal$reflectance*rowflagmean_macaw_swp_cal$a2 + rowflagmean_macaw_swp_cal$b2
+  }
+}
+head(rowflagmean_macaw_swp_cal)
+#drop the old reflectance
+rowflagmean_macaw_swp_cal$reflectance <- NULL
+rowflagmean_macaw_swp_cal$a1 <- NULL
+rowflagmean_macaw_swp_cal$a2 <- NULL
+rowflagmean_macaw_swp_cal$b1 <- NULL
+rowflagmean_macaw_swp_cal$b2 <- NULL
+
+#change long back to wide
+rowflagmean_macaw_swp_cal <- tidyr::spread(rowflagmean_macaw_swp_cal, wavelength, ref_cal)
+head(rowflagmean_macaw_swp_cal)
+colnames(rowflagmean_macaw_swp_cal)[5:16] <- paste0("X",colnames(rowflagmean_macaw_swp_cal)[5:16])
+
+#calculate the indices 
+rowflagmean_macaw_swp_cal$ndvi <- NDVI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$pri <- PRI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$wi <- WI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$wi.ndvi <- WI.NDVI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$mcawi <- MCARI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$tcari.osavi <- TCARI.OSAVI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$tcari <- TCARI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$pri550 <- PRI550(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$prinorm <- PRInorm(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$prinorm550 <- PRInorm550(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$rer <- RER(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$rdvi <- RDVI(rowflagmean_macaw_swp_cal)
+
+head(rowflagmean_macaw_swp_cal)
+
+rowflagmean_macaw_swp_cal <- merge(rowflagmean_macaw_swp_cal, rowflagmean_macaw_swp_sb[,c(1:4,29)], by = c("Block","Treatment","Date","Plot"))
+```
+
+##Plot with rowflagmean_macaw_swp_cal
+###Scatter plot
+```{r}
+p1 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-06-28"), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-02"), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-15"), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_cal), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+#PRI
+p1 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-06-28"), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-02"), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-15"), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_cal), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+##NDVI
+p1 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-06-28"), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-02"), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-15"), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_cal), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+##RDVI
+p1 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-06-28"), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-02"), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-15"), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_cal), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+
+```
+###Boxplot
+```{r}
+ggplot(rowflagmean_macaw_swp_cal, aes(x = as.factor(Date), y = pri, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI") + scale_fill_tableau() + ggtitle("PRI Row Average") 
+ggplot(rowflagmean_macaw_swp_cal, aes(x = as.factor(Date), y = prinorm, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInorm") + scale_fill_tableau() + ggtitle("PRInorm Row Average") 
+ggplot(rowflagmean_macaw_swp_cal, aes(x = as.factor(Date), y = ndvi, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NDVI") + scale_fill_tableau() + ggtitle("NDVI Row Average") 
+ggplot(rowflagmean_macaw_swp_cal, aes(x = as.factor(Date), y = rdvi, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RDVI") + scale_fill_tableau() + ggtitle("RDVI Row Average") 
+ggplot(rowflagmean_macaw_swp_cal, aes(x = as.factor(Date), y = rer, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RER") + scale_fill_tableau() + ggtitle("RER Row Average") 
+
+```
+
+#Use the 0815 as the standard 
+```{r}
+ls_equations <- list()
+mat_coef <- matrix(0, 2,2)
+colnames(mat_coef) <- c("a","b")
+ls_matrix <- rep(list(mat_coef), 12) #a list with 12 empty matrix
+#store the coefficients in a dataframe, so that it can be merged with the raw data frame
+wavelen_macaw <- c(450, 480, 530, 550, 570, 670, 700, 720, 740, 800, 900, 970)
+df_coef <- data.frame("wavelength"=wavelen_macaw,"a1"=0,"b1"=0,"a2"=0,"b2"=0)
+df_coef
+ls_bands <- split(panel_macaw_long, panel_macaw_long$wavelength)
+names(ls_bands)
+
+for(i in 1:12){
+  #a1
+  a1 <- (subset(ls_bands[[i]],Color=="Black"&Date=="0815")$reflectance-subset(ls_bands[[i]],Color=="Gray"&Date=="0815")$reflectance)/(subset(ls_bands[[i]],Color=="Black"&Date=="0628")$reflectance-subset(ls_bands[[i]],Color=="Gray"&Date=="0628")$reflectance)
+  df_coef[i,]$a1 <- a1
+  #b1
+  b1 <- as.double(subset(ls_bands[[i]],Color=="Black"&Date=="0815")$reflectance) - as.double(a1*subset(ls_bands[[i]],Color=="Black"&Date=="0628")$reflectance)
+  df_coef[i,]$b1 <- b1
+  #a2
+  a2 <- (subset(ls_bands[[i]],Color=="Black"&Date=="0815")$reflectance-subset(ls_bands[[i]],Color=="Gray"&Date=="0815")$reflectance)/(subset(ls_bands[[i]],Color=="Black"&Date=="0802")$reflectance-subset(ls_bands[[i]],Color=="Gray"&Date=="0802")$reflectance)
+  df_coef[i,]$a2 <- a2
+  #b2
+  b2 <- as.double(subset(ls_bands[[i]],Color=="Black"&Date=="0815")$reflectance) - as.double(a2*subset(ls_bands[[i]],Color=="Black"&Date=="0802")$reflectance)
+  df_coef[i,]$b2 <- b2
+}
+
+#verify
+class(panel_macaw_long$wavelength)  #numeric
+head(panel_macaw_long)
+aa <- base::merge(panel_macaw_long, df_coef, by = "wavelength")
+aa$ref_cal <- 0
+head(aa)
+for(i in 1:nrow(aa)){
+  if(aa[i,]$Date=="0628"){
+    aa[i,]$ref_cal = aa[i,]$reflectance * aa[i,]$a1 + aa[i,]$b1
+  }
+  if(aa[i,]$Date=="0815"){
+    aa[i,]$ref_cal = aa[i,]$reflectance
+  }
+  if(aa[i,]$Date=="0802"){
+    aa[i,]$ref_cal = aa[i,]$reflectance * aa[i,]$a2 + aa[i,]$b2
+  }
+}
+head(aa)
+
+#Plot
+plot(Black_ave_1$wavelength, Black_ave_1$reflectance, type = "l", xlab = "Wavelength", ylab = "Reflectance", main = "Reflectance from Black Panel", xlim = c(337.5,1000), ylim = c(0, 0.15))
+lines(Black_ave_2$wavelength, Black_ave_2$reflectance, type = "l", col = "red")
+points(subset(aa, Color == "Black" & Date == "0628")$wavelength, subset(aa, Color == "Black" & Date == "0628")$ref_cal, col = "orange")
+points(subset(aa, Color == "Black" & Date == "0802")$wavelength, subset(aa, Color == "Black" & Date == "0802")$ref_cal, col = "darkgreen", pch = 22)
+points(subset(aa, Color == "Black" & Date == "0815")$wavelength, subset(aa, Color == "Black" & Date == "0815")$ref_cal, col = "blue", pch = 17)
+legend("topleft", legend  = c("Before Cleaning", "After Cleaning","06-28","08-02","08-15"), col = c("black","red","orange","darkgreen","blue"), lty = c(1,1,NA,NA,NA),pch = c(NA,NA,1,22,17))
+
+```
+
+##Use the calibration coefficient for the entire field 
+```{r}
+head(rowflagmean_macaw_swp_sb)
+head(df_coef)
+#change long to wide
+rowflagmean_macaw_swp_cal <- rowflagmean_macaw_swp_sb
+rowflagmean_macaw_swp_cal <- tidyr::gather(rowflagmean_macaw_swp_sb[,1:16], wavelength, reflectance, X800:X970)
+head(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$wavelength <- sub("X","",rowflagmean_macaw_swp_cal$wavelength)
+rowflagmean_macaw_swp_cal$wavelength <- as.numeric(rowflagmean_macaw_swp_cal$wavelength)
+#merge with df_coef
+rowflagmean_macaw_swp_cal <- base::merge(rowflagmean_macaw_swp_cal, df_coef, by = "wavelength")
+#add a column
+rowflagmean_macaw_swp_cal$ref_cal <- 0
+#change rowflagmean_macaw_swp_sb
+for(i in 1:nrow(rowflagmean_macaw_swp_cal)){
+  if(rowflagmean_macaw_swp_cal[i,]$Date=="2019-06-28"){
+    rowflagmean_macaw_swp_cal$ref_cal <- rowflagmean_macaw_swp_cal$reflectance*rowflagmean_macaw_swp_cal$a1 + rowflagmean_macaw_swp_cal$b1
+  }
+  if(rowflagmean_macaw_swp_cal[i,]$Date=="2019-08-15"){
+    rowflagmean_macaw_swp_cal$ref_cal <- rowflagmean_macaw_swp_cal$reflectance
+  }
+  if(rowflagmean_macaw_swp_cal[i,]$Date=="2019-08-02"){
+    rowflagmean_macaw_swp_cal$ref_cal <- rowflagmean_macaw_swp_cal$reflectance*rowflagmean_macaw_swp_cal$a2 + rowflagmean_macaw_swp_cal$b2
+  }
+}
+head(rowflagmean_macaw_swp_cal)
+#drop the old reflectance
+rowflagmean_macaw_swp_cal$reflectance <- NULL
+rowflagmean_macaw_swp_cal$a1 <- NULL
+rowflagmean_macaw_swp_cal$a2 <- NULL
+rowflagmean_macaw_swp_cal$b1 <- NULL
+rowflagmean_macaw_swp_cal$b2 <- NULL
+
+#change long back to wide
+rowflagmean_macaw_swp_cal <- tidyr::spread(rowflagmean_macaw_swp_cal, wavelength, ref_cal)
+head(rowflagmean_macaw_swp_cal)
+colnames(rowflagmean_macaw_swp_cal)[5:16] <- paste0("X",colnames(rowflagmean_macaw_swp_cal)[5:16])
+
+#calculate the indices 
+rowflagmean_macaw_swp_cal$ndvi <- NDVI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$pri <- PRI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$wi <- WI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$wi.ndvi <- WI.NDVI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$mcawi <- MCARI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$tcari.osavi <- TCARI.OSAVI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$tcari <- TCARI(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$pri550 <- PRI550(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$prinorm <- PRInorm(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$prinorm550 <- PRInorm550(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$rer <- RER(rowflagmean_macaw_swp_cal)
+rowflagmean_macaw_swp_cal$rdvi <- RDVI(rowflagmean_macaw_swp_cal)
+
+head(rowflagmean_macaw_swp_cal)
+
+rowflagmean_macaw_swp_cal <- merge(rowflagmean_macaw_swp_cal, rowflagmean_macaw_swp_sb[,c(1:4,29)], by = c("Block","Treatment","Date","Plot"))
+```
+
+##Plot with rowflagmean_macaw_swp_cal
+###Scatter plot
+```{r}
+#PRInorm
+p1 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-06-28"), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-02"), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-15"), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_cal), aes(x = prinorm, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRInorm") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+#PRI
+p1 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-06-28"), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-02"), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-15"), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_cal), aes(x = pri, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("PRI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+##NDVI
+p1 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-06-28"), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-02"), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-15"), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_cal), aes(x = ndvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("NDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+##RDVI
+p1 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-06-28"), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p2 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-02"), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-02") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p3 = ggplot(subset(rowflagmean_macaw_swp_cal, Date == "2019-08-15"), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+p4 = ggplot(subset(rowflagmean_macaw_swp_cal), aes(x = rdvi, y = -SWP)) + geom_point()+ theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("RDVI") + ylab(expression(paste(Psi["stem"]," (Bars)"))) + scale_fill_tableau() + ggtitle("06-28 + 08-02 + 08-15") + geom_smooth(method = "lm", se = FALSE)#+ facet_wrap(~Date, nrow = 3, scales  = "free")
+ggarrange(p1,p2,p3,p4, nrow = 2, ncol = 2)
+
+```
+###Boxplot
+```{r}
+ggplot(rowflagmean_macaw_swp_cal, aes(x = as.factor(Date), y = pri, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRI") + scale_fill_tableau() + ggtitle("PRI Row Average") 
+ggplot(rowflagmean_macaw_swp_cal, aes(x = as.factor(Date), y = prinorm, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("PRInorm") + scale_fill_tableau() + ggtitle("PRInorm Row Average") 
+ggplot(rowflagmean_macaw_swp_cal, aes(x = as.factor(Date), y = ndvi, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("NDVI") + scale_fill_tableau() + ggtitle("NDVI Row Average") 
+ggplot(rowflagmean_macaw_swp_cal, aes(x = as.factor(Date), y = rdvi, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RDVI") + scale_fill_tableau() + ggtitle("RDVI Row Average") 
+ggplot(rowflagmean_macaw_swp_cal, aes(x = as.factor(Date), y = rer, fill = Treatment))+ geom_boxplot(position = position_dodge(0.75))  + theme_pubr(base_size = 14, base_family = "serif", border = TRUE, legend = "right")+  xlab("Date") + ylab("RER") + scale_fill_tableau() + ggtitle("RER Row Average") 
+
+```
+
+#Use the standard courve measured by SVC
+##resample to the specific wavelength
+```{r}
+?spectrolab::resample
+wavelen_macaw <- c(450, 480, 530, 550, 570, 670, 700, 720, 740, 800, 900, 970)
+fwhm_macaw <- 10
+
+sensor_macaw <- data.frame()
+
+#set resampling 
+#convert to spectra 
+bb <- hsdar::speclib(Black_ave_1$reflectance, wavelength = Black_ave_1$wavelength)
+gg <- hsdar::speclib(Gray_ave_1$reflectance, wavelength = Gray_ave_1$wavelength)
+
+center <- c(450, 480, 530, 550, 570, 670, 700, 720, 740, 800, 900, 970)
+fwhm <- 10
+wl <- wavelen_panel
+
+response <- speclib(t(sapply(center, function(center, wl, fwhm)
+{
+  a <- dnorm(wl, mean = center, sd = fwhm/2)
+  a <- (a-min(a))/(max(a) - min(a))
+  return(a)
+}, wl, fwhm)), wl)
+
+for (i in 1:12)
+  plot(response[i,], new = i == 1, col = i,xlim=c(400,1000))
+
+black_resampled <- spectralResampling(bb, response_function = response)
+gray_resampled <- spectralResampling(gg, response_function = response)
+
+plot(Black_ave_1)
+plot(Gray_ave_1)
+plot(black_resampled)
+plot(gray_resampled)
+
+black_resampled@wavelength
+black_resampled@spectra
+
+panel_resampled <- data.frame("Color"=c(rep("Black",12),rep("Gray",12)),"wavelength"=c(black_resampled@wavelength, gray_resampled@wavelength),"reflectance"=c(as.vector(spectra(black_resampled)),as.vector(spectra(gray_resampled))))
+panel_resampled
+```
+##Calculate coefficients for calibration 
+```{r}
+ls_equations <- list()
+#store the coefficients in a dataframe, so that it can be merged with the raw data frame
+wavelen_macaw <- c(450, 480, 530, 550, 570, 670, 700, 720, 740, 800, 900, 970)
+df_coef <- data.frame("wavelength"=wavelen_macaw,"a1"=0,"b1"=0,"a2"=0,"b2"=0,"a3"=0,"b3"=0)
+df_coef
+ls_bands <- split(panel_macaw_long, panel_macaw_long$wavelength)
+names(ls_bands)
+
+for(i in 1:12){
+  #a1
+  a1 <- (subset(ls_bands[[i]],Color=="Black"&Date=="0628")$reflectance-subset(ls_bands[[i]],Color=="Gray"&Date=="0628")$reflectance)/(subset(ls_bands[[i]],Color=="Black"&Date=="0802")$reflectance-subset(ls_bands[[i]],Color=="Gray"&Date=="0802")$reflectance)
+  df_coef[i,]$a1 <- a1
+  #b1
+  b1 <- as.double(subset(ls_bands[[i]],Color=="Black"&Date=="0628")$reflectance) - as.double(a1*subset(ls_bands[[i]],Color=="Black"&Date=="0802")$reflectance)
+  df_coef[i,]$b1 <- b1
+  #a2
+  a2 <- (subset(ls_bands[[i]],Color=="Black"&Date=="0628")$reflectance-subset(ls_bands[[i]],Color=="Gray"&Date=="0628")$reflectance)/(subset(ls_bands[[i]],Color=="Black"&Date=="0815")$reflectance-subset(ls_bands[[i]],Color=="Gray"&Date=="0815")$reflectance)
+  df_coef[i,]$a2 <- a2
+  #b2
+  b2 <- as.double(subset(ls_bands[[i]],Color=="Black"&Date=="0628")$reflectance) - as.double(a2*subset(ls_bands[[i]],Color=="Black"&Date=="0815")$reflectance)
+  df_coef[i,]$b2 <- b2
+}
+
+#verify
+class(panel_macaw_long$wavelength)  #numeric
+head(panel_macaw_long)
+aa <- base::merge(panel_macaw_long, df_coef, by = "wavelength")
+aa$ref_cal <- 0
+head(aa)
+for(i in 1:nrow(aa)){
+  if(aa[i,]$Date=="0802"){
+    aa[i,]$ref_cal = aa[i,]$reflectance * aa[i,]$a1 + aa[i,]$b1
+  }
+  if(aa[i,]$Date=="0628"){
+    aa[i,]$ref_cal = aa[i,]$reflectance
+  }
+  if(aa[i,]$Date=="0815"){
+    aa[i,]$ref_cal = aa[i,]$reflectance * aa[i,]$a2 + aa[i,]$b2
+  }
+}
+head(aa)
+
+#Plot
+plot(Black_ave_1$wavelength, Black_ave_1$reflectance, type = "l", xlab = "Wavelength", ylab = "Reflectance", main = "Reflectance from Black Panel", xlim = c(337.5,1000), ylim = c(0, 0.15))
+lines(Black_ave_2$wavelength, Black_ave_2$reflectance, type = "l", col = "red")
+points(subset(aa, Color == "Black" & Date == "0628")$wavelength, subset(aa, Color == "Black" & Date == "0628")$ref_cal, col = "orange")
+points(subset(aa, Color == "Black" & Date == "0802")$wavelength, subset(aa, Color == "Black" & Date == "0802")$ref_cal, col = "darkgreen", pch = 22)
+points(subset(aa, Color == "Black" & Date == "0815")$wavelength, subset(aa, Color == "Black" & Date == "0815")$ref_cal, col = "blue", pch = 17)
+legend("topleft", legend  = c("Before Cleaning", "After Cleaning","06-28","08-02","08-15"), col = c("black","red","orange","darkgreen","blue"), lty = c(1,1,NA,NA,NA),pch = c(NA,NA,1,22,17))
+
+```
+
+```{r}
 
 ```
 
